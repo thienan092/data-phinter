@@ -3,7 +3,7 @@
 
 services:
   - type: web
-    name: coffee-market-analysis # Đặt tên cho dịch vụ web của bạn
+    name: data-phinter # Đặt tên cho dịch vụ web của bạn
     env: python                  # Chỉ định môi trường là Python
     region: singapore            # Chọn khu vực gần người dùng của bạn nhất (ví dụ: singapore, oregon, frankfurt)
     plan: starter                # Chọn gói dịch vụ (starter, standard, pro)
@@ -28,7 +28,7 @@ services:
     # Biến môi trường
     envVars:
       - key: PYTHON_VERSION
-        value: 3.9.18 # Đảm bảo phiên bản Python phù hợp với yêu cầu của bạn (3.9+)
+        value: 3.11.8
       - key: WEBSOCKET_URL # Một ví dụ biến môi trường nếu ứng dụng của bạn cần
         value: ws://localhost:8000
       # Thêm các biến môi trường khác cần thiết cho ứng dụng của bạn tại đây,
