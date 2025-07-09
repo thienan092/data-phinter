@@ -2,89 +2,64 @@ import os
 import re
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
-
-# --- BẮT ĐẦU PHẦN THAY ĐỔI ---
-# Không cần thư viện webdriver_manager nữa
-# from webdriver_manager.chrome import ChromeDriverManager
-# --- KẾT THÚC PHẦN THAY ĐỔI ---
+import requests
 
 # --- Cấu hình ---
 app = Flask(__name__)
 CORS(app)
 
-# --- BẮT ĐẦU PHẦN THAY ĐỔI ---
-def get_chrome_driver():
-    """Khởi tạo và trả về một WebDriver Chrome sử dụng Selenium Manager tích hợp."""
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-infobars")
-    chrome_options.add_argument("--remote-debugging-port=9222")
-
-    # Selenium 4.6.0+ sẽ tự động quản lý driver khi Service() được gọi mà không có tham số
-    service = Service()
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    return driver
-# --- KẾT THÚC PHẦN THAY ĐỔI ---
-
+# Headers để giả mạo một trình duyệt thông thường
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+}
 
 def extract_price(url: str, selector: str):
-    """Quét một URL với một bộ chọn CSS cho trước và trích xuất giá."""
-    driver = None
+    """
+    Quét một URL bằng requests, phân tích bằng BeautifulSoup và trích xuất giá.
+    LƯU Ý: Sẽ không hoạt động nếu giá được tải bằng JavaScript.
+    """
     try:
-        driver = get_chrome_driver()
-        driver.get(url)
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, 'html.parser')
         
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-        )
+        price_element = soup.select_one(selector)
         
-        price_text = driver.find_element(By.CSS_SELECTOR, selector).text
+        if price_element:
+            price_text = price_element.get_text()
+            numbers = re.findall(r'\d+', price_text.replace('.', '').replace(',', ''))
+            if numbers:
+                return int("".join(numbers))
         
-        # Regex cải tiến để xử lý nhiều định dạng khác nhau
-        numbers = re.findall(r'\d+', price_text.replace('.', '').replace(',', ''))
-        if numbers:
-            return int("".join(numbers))
-        else:
-            return None
+        return None
             
+    except requests.exceptions.RequestException as e:
+        print(f"Lỗi mạng khi truy cập {url}: {e}")
+        return None
     except Exception as e:
         print(f"Lỗi khi quét {url} với bộ chọn '{selector}': {e}")
         return None
-    finally:
-        if driver:
-            driver.quit()
 
-def verify_price_uniquely(driver, price: int):
+def verify_price_uniquely(url: str, price: int):
     """
     Xác minh xem một mức giá cho trước có xuất hiện duy nhất trong văn bản của trang hay không.
-    Hàm này kiểm tra nhiều định dạng và trả về số lần xuất hiện tối thiểu khác không.
     """
     try:
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        # Xóa thẻ script và style để tránh khớp giá trong mã nguồn
+        response = requests.get(url, headers=HEADERS, timeout=15)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
         for script in soup(["script", "style"]):
             script.decompose()
         body_text = soup.body.get_text(separator=' ', strip=True)
 
-        # Tạo các định dạng chuỗi khác nhau cho giá
         price_str = str(price)
-        # Định dạng có dấu chấm ngăn cách hàng nghìn: 132.000
         formatted_price_dot = f"{price:,}".replace(",", ".")
-        # Định dạng có dấu phẩy ngăn cách hàng nghìn: 132,000
         formatted_price_comma = f"{price:,}"
 
-        # Xác định các mẫu với tên để rõ ràng.
         patterns_to_check = {
             "dot_separator": r'\b' + re.escape(formatted_price_dot) + r'\b',
             "comma_separator": r'\b' + re.escape(formatted_price_comma) + r'\b',
@@ -92,7 +67,7 @@ def verify_price_uniquely(driver, price: int):
         }
         
         counts = {}
-        print("--- Đang xác minh giá bằng văn bản ---")
+        print("--- Đang xác minh giá bằng văn bản (requests) ---")
         for name, pattern in patterns_to_check.items():
             matches = re.findall(pattern, body_text)
             counts[name] = len(matches)
@@ -101,13 +76,11 @@ def verify_price_uniquely(driver, price: int):
         non_zero_counts = [c for c in counts.values() if c > 0]
         
         if not non_zero_counts:
-            print("Kết quả: Không tìm thấy giá ở bất kỳ định dạng nào.")
             return {"passed": False, "min_count": 0}
 
         min_count = min(non_zero_counts)
         passed = (min_count == 1)
         
-        print(f"Kết quả: Trường hợp tốt nhất có {min_count} lần xuất hiện. Thành công: {passed}")
         return {"passed": passed, "min_count": min_count}
         
     except Exception as e:
@@ -123,7 +96,7 @@ def handle_check_price():
     url = data['url']
     selector = data['selector']
 
-    print(f"Đang kiểm tra giá cho URL: {url} với bộ chọn: '{selector}'")
+    print(f"Đang kiểm tra giá cho URL: {url} với bộ chọn đã chuẩn hóa: '{selector}'")
     
     price = extract_price(url, selector)
     
@@ -134,10 +107,6 @@ def handle_check_price():
 
 @app.route('/api/verify-price-by-text', methods=['POST'])
 def handle_verify_price():
-    """
-    API dự phòng để xác minh một mức giá bằng cách tìm kiếm biểu diễn văn bản của nó
-    một cách duy nhất trong phần thân của trang.
-    """
     data = request.get_json()
     if not data or 'url' not in data or 'price' not in data:
         return jsonify({"error": "Thiếu URL hoặc giá để xác minh"}), 400
@@ -145,15 +114,8 @@ def handle_verify_price():
     url = data['url']
     price_to_verify = data['price']
     
-    driver = None
     try:
-        driver = get_chrome_driver()
-        driver.get(url)
-        WebDriverWait(driver, 20).until(
-            lambda d: d.execute_script('return document.readyState') == 'complete'
-        )
-        
-        verification_result = verify_price_uniquely(driver, price_to_verify)
+        verification_result = verify_price_uniquely(url, price_to_verify)
         
         return jsonify({
             "found_uniquely": verification_result["passed"],
@@ -163,9 +125,6 @@ def handle_verify_price():
     except Exception as e:
         print(f"Lỗi khi xác minh giá bằng văn bản cho {url}: {e}")
         return jsonify({"error": "Thất bại khi xác minh giá bằng văn bản", "found_uniquely": False, "match_count": -1}), 500
-    finally:
-        if driver:
-            driver.quit()
 
 @app.route('/')
 def serve_index():
@@ -176,7 +135,6 @@ def serve_index():
 def serve_static(path):
     """Phục vụ các file tĩnh khác nếu cần (ví dụ: CSS, JS riêng)."""
     return send_from_directory('.', path)
-
 
 if __name__ == '__main__':
     # Sửa lại lệnh app.run để phù hợp với production hơn
