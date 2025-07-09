@@ -2,9 +2,13 @@
 **Hệ thống Phân tích Thị trường Cà phê (Data Phin-ter)** là một ứng dụng web tiên tiến, được thiết kế như một công cụ phân tích nhỏ gọn, dễ dàng **tùy chỉnh thông qua mô hình ngôn ngữ lớn Gemini Pro 2.5**. Dự án này thể hiện cách tận dụng tính năng **Deep Research của Gemini để sinh dữ liệu chất lượng cao** cho phân tích, đồng thời tích hợp cơ chế **kiểm chứng dữ liệu tại nguồn** nhằm loại bỏ các kết quả bị ảnh hưởng bởi hiện tượng "hallucination". Hơn nữa, toàn bộ giao diện người dùng cũng được hỗ trợ đáng kể (ước tính hơn 50%) từ Gemini thông qua quy trình "prompting", giúp rút ngắn đáng kể thời gian phát triển và có **tính tương thích cao với các loại dữ liệu thị trường** khác ngoài cà phê.
 
 ---
+![image](https://github.com/user-attachments/assets/c5933938-4bf9-41cd-90aa-3da153b25990)
+
+---
 
 ## Tính năng chính
 
+* **Cấu trúc file dữ liệu (.csv) đầu vào:** Xem `sample_data.csv`. 
 * **Quản lý Dữ liệu Tập trung (SST):** Giao diện lưới dữ liệu (AG Grid) cung cấp khả năng **xem, lọc, và quản lý tập trung toàn bộ dữ liệu sản phẩm** từ một nguồn duy nhất, đảm bảo tính nhất quán và chính xác. Hỗ trợ nhập liệu dễ dàng từ file CSV.
 * **Cập nhật Giá Tự động:** Sử dụng Selenium để truy cập các URL sản phẩm và **tự động thu thập dữ liệu giá mới nhất**. Các tác vụ được quản lý trong một hàng đợi trực quan, cho phép người dùng **kiểm chứng dữ liệu tai nguồn, theo dõi tiến trình và xử lý các thay đổi về giá**.
 * **Trực quan hóa Dữ liệu:** Tạo ra các biểu đồ tương tác (Chart.js) một cách tự động từ dữ liệu đã lọc, giúp người dùng **dễ dàng nắm bắt insight thị trường**, bao gồm:
@@ -89,22 +93,14 @@ Dự án đã được cấu hình để triển khai trên Render thông qua fi
 5. **Cấu hình dịch vụ Web:**
 
    * **Tên (Name):** Đặt một tên dễ nhớ cho dịch vụ của bạn (ví dụ: `coffee-market-analysis`).
-
-   * **Nhánh (Branch):** Chọn nhánh mà bạn muốn triển khai (thường là `main` hoặc `master`).
-
-   * **Thư mục gốc (Root Directory):** Để trống nếu dự án của bạn nằm ở thư mục gốc của kho chứa.
-
-   * **Môi trường (Runtime):** Chọn `"Python 3"`.
-
-   * **Lệnh Build (Build Command):** `pip install -r requirements.txt`
-
-   * **Lệnh Khởi động (Start Command):** `gunicorn --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker app:app`
   
    * **Instance Type:** Cấu hình tối thiểu cho dự án là **Free**. 
 
    * **Kiểu Dịch vụ (Service Type):** Chọn `"Web Service"`.
 
-   * **Khu vực (Region):** Chọn khu vực gần người dùng của bạn nhất (Singapore nếu bạn ở Việt Nam). 
+   * **Khu vực (Region):** Chọn khu vực gần người dùng của bạn nhất (Singapore nếu bạn ở Việt Nam).
+  
+   * **Các trường khác vẫn giữ mặc định.**
 
 6. **Tạo Web Service:** Nhấp vào `"Deploy Web Service"`. Render sẽ tự động bắt đầu quá trình triển khai, cài đặt các phụ thuộc và chạy ứng dụng của bạn. Bạn có thể theo dõi tiến trình trong nhật ký triển khai.
 
