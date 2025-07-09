@@ -1,0 +1,1890 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Phân Tích Động Thị Trường Cà Phê</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/ag-grid-community@31.3.2/dist/ag-grid-community.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/litepicker/dist/litepicker.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/litepicker/dist/css/litepicker.css"/>
+    <style>
+        :root {
+            --header-height: 80px;
+            --tab-height: 50px;
+        }
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+        body {
+            background-color: #f0f2f5;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+       .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+       }
+       .tab-content {
+            display: none;
+            overflow-y: auto;
+            flex-grow: 1;
+            padding: 1.5rem;
+        }
+       .tab-content.active {
+            display: flex;
+            flex-direction: column;
+        }
+       .tab-btn.active {
+            border-color: #1d4ed8;
+            color: #1d4ed8;
+            background-color: #eff6ff;
+        }
+       .ag-theme-alpine {
+            height: 100%;
+            width: 100%;
+            flex-grow: 1;
+        }
+       .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            min-height: 450px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-container canvas {
+            flex-grow: 1;
+            max-height: 400px;
+        }
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        #chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem 0.5rem 0 0;
+            background-color: #ffffff;
+        }
+       .message {
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            max-width: 85%;
+            line-height: 1.5;
+            white-space: pre-wrap; /* To respect newlines from AI */
+        }
+       .user-message {
+            background-color: #dbeafe;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+       .bot-message {
+            background-color: #f3f4f6;
+            align-self: flex-start;
+        }
+        .loading-message {
+            align-self: flex-start;
+            color: #6b7280;
+            font-style: italic;
+        }
+       .ag-cell {
+            word-break: break-word !important;
+        }
+        #task-queue-container {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            width: 350px;
+            max-height: 400px;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease-in-out;
+            transform: translate(0, 0); /* Kích hoạt tăng tốc GPU để di chuyển mượt mà */
+        }
+        #task-queue-header {
+            cursor: grab; /* Thay đổi con trỏ chuột khi di qua header */
+        }
+        #task-queue-header:active {
+            cursor: grabbing; /* Thay đổi con trỏ chuột khi đang kéo */
+        }
+        .progress-bar {
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background-color: #3b82f6;
+            height: 100%;
+            transition: width 0.5s ease-in-out;
+        }
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 500px;
+            width: 90%;
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+<div class="p-4 bg-white shadow-md z-20">
+    <div class="flex flex-wrap justify-between items-center">
+        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2 md:mb-0">Phân Tích Thị Trường Cà Phê
+        <button id="help-btn" class="ml-3 text-gray-400 hover:text-blue-600 transition-colors duration-200" title="Hướng dẫn sử dụng">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+        </h1>
+        <div>
+            <label for="datepicker" class="text-sm font-medium text-gray-700 mr-2">Bộ lọc Thời gian:</label>
+            <input id="datepicker" class="border border-gray-300 rounded-md px-3 py-2 text-sm w-64"/>
+        </div>
+    </div>
+</div>
+
+<div class="px-6 bg-white/80 backdrop-blur-sm z-20">
+    <div class="border-b border-gray-200">
+        <nav class="-mb-px flex space-x-6 overflow-x-auto" id="tab-container">
+            <button class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="sstTab">Dữ Liệu SST</button>
+            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="marketOverviewTab">Tổng quan Thị trường</button>
+            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="competitiveAnalysisTab">Phân tích Cạnh tranh</button>
+            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="logisticsTab">Vận hành Logistics</button>
+            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="aiAnalysisTab">Phân tích AI</button>
+        </nav>
+    </div>
+</div>
+
+<main class="main-container">
+    <div id="sstTab" class="tab-content active">
+        <div class="mb-4 flex flex-wrap justify-between items-center">
+            <div class="flex space-x-2">
+                <button id="add-data-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                    Thêm dữ liệu
+                </button>
+                <button id="to-csv-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                    📤 Tạo file CSV
+                </button>
+                <input type="file" id="csv-file-input" class="hidden" accept=".csv">
+            </div>
+            <div class="flex space-x-2">
+                <button id="add-all-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 hidden">
+                    Thêm tất cả thay đổi
+                </button>
+                <button id="check-price-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    Kiểm tra cập nhật giá
+                </button>
+                 <button id="settings-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold p-2 rounded-lg shadow-md transition duration-300" title="Thiết lập Hiển thị & Khóa">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                </button>
+            </div>
+        </div>
+        <div id="sstGrid" class="ag-theme-alpine"></div>
+    </div>
+
+    <div id="marketOverviewTab" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
+            <div class="chart-container lg:col-span-2">
+                <h3 class="text-lg font-semibold mb-4 text-center">Định vị Giá Trung bình theo Thương hiệu (VND/kg)</h3>
+                <canvas id="brandPriceChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3 class="text-lg font-semibold mb-4 text-center">Phân bổ Chủng loại Cà phê</h3>
+                <canvas id="coffeeTypeChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="competitiveAnalysisTab" class="tab-content">
+        <div class="grid grid-cols-1 gap-6 w-full">
+            <div class="chart-container">
+                <h3 class="text-lg font-semibold mb-4 text-center">Bản đồ Định vị Thương hiệu</h3>
+                <canvas id="brandPositioningChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="logisticsTab" class="tab-content">
+        <div class="mb-4 p-4 bg-white rounded-lg shadow">
+            <label for="input-default-ship-fee" class="text-sm font-medium text-gray-700 mr-2">Phí ship mặc định (VND):</label>
+            <input type="number" id="input-default-ship-fee" value="30000" step="1000" class="p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div class="grid grid-cols-1 gap-6 w-full">
+             <div class="chart-container">
+                <h3 class="text-lg font-semibold mb-4 text-center">Phân tích Hiệu quả Ngưỡng Freeship</h3>
+                <canvas id="freeshipChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="aiAnalysisTab" class="tab-content">
+        <div id="chat-container">
+            <div id="chat-messages" class="mb-4 flex flex-col space-y-4">
+                 <div class="message bot-message">
+                    <strong>Xin chào!</strong> Tôi là trợ lý phân tích chiến lược. Hãy đặt câu hỏi về thị trường cà phê dựa trên dữ liệu đang hiển thị, hoặc chọn một gợi ý bên dưới để bắt đầu.
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-200">
+                <p class="text-sm font-medium text-gray-600 mb-2">Gợi ý phân tích:</p>
+                <div class="flex flex-wrap gap-2">
+                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full">Phân khúc thị trường đang có những đặc điểm gì?</button>
+                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full">So sánh chiến lược logistics của các thương hiệu.</button>
+                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full">Yếu tố nào quan trọng nhất với khách hàng cao cấp?</button>
+                </div>
+                <div class="flex mt-4">
+                    <input type="text" id="chat-input" class="flex-grow border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập câu hỏi của bạn...">
+                    <button id="chat-submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-r-md hover:bg-blue-700">Gửi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div id="task-queue-container" class="hidden">
+    <div id="task-queue-header" class="p-3 bg-gray-700 text-white font-semibold flex justify-between items-center">
+        <div class="flex items-center space-x-2">
+            <button id="toggle-queue-btn" class="text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+            </button>
+            <span>Hàng đợi tác vụ (<span id="task-count">0</span>)</span>
+        </div>
+        <button id="clear-pending-tasks-btn" class="text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded">Làm Trống</button>
+    </div>
+    <div id="task-queue-body" class="p-3 space-y-3 overflow-y-auto">
+    </div>
+</div>
+
+<div id="settings-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2 class="text-xl font-bold mb-4">Thiết lập Hiển thị & Khóa</h2>
+        <p class="text-sm text-gray-600 mb-4">Tùy chỉnh các cột được hiển thị và các cột được sử dụng làm khóa chống trùng lặp.</p>
+        <div id="settings-list" class="space-y-2 mb-6 max-h-64 overflow-y-auto">
+            <!-- Settings will be inserted here by JS -->
+        </div>
+        <div class="flex justify-end space-x-3">
+            <button id="cancel-settings-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Hủy</button>
+            <button id="apply-settings-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Áp dụng</button>
+        </div>
+    </div>
+</div>
+
+<div id="api-key-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <h2 class="text-xl font-bold mb-4">Thiết lập Gemini API Key</h2>
+        <p class="text-sm text-gray-600 mb-4">Vui lòng cung cấp khóa API Gemini của bạn để sử dụng chức năng phân tích AI. Khóa sẽ được lưu trữ trong phiên làm việc của trình duyệt.</p>
+        <div>
+            <label for="gemini-api-key-input" class="block text-sm font-medium text-gray-700">Gemini API Key</label>
+            <input type="password" id="gemini-api-key-input" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div class="flex justify-end space-x-3 mt-6">
+            <button id="cancel-api-key-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Hủy</button>
+            <button id="save-api-key-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Lưu</button>
+        </div>
+    </div>
+</div>
+
+<div id="help-modal" class="modal-overlay hidden">
+    <div class="modal-content relative max-w-2xl">
+        <button id="close-help-btn" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">Hướng dẫn Sử dụng</h2>
+        
+        <div class="text-sm text-gray-700 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <p>Hệ thống phân tích động cho thị trường cà phê bán lẻ (bản portable).</p>
+            
+            <div>
+                <h3 class="text-lg font-semibold mb-2 text-gray-900">Các Thành phần Chính</h3>
+                <ul class="list-disc list-inside space-y-2 pl-2">
+                    <li><strong>Lọc theo Thời gian:</strong> Cho phép bạn chọn một khoảng thời gian để phân tích. Toàn bộ dữ liệu và biểu đồ trên trang sẽ được cập nhật theo lựa chọn của bạn.</li>
+                    <li><strong>Các Tab Điều hướng:</strong>
+                        <ul class="list-disc list-inside ml-5 mt-1 space-y-1">
+                            <li><strong>Dữ liệu SST:</strong> Nơi hiển thị Nguồn Chân Lý Duy Nhất (Single Source of Truth). Đây là trung tâm quản lý dữ liệu của bạn và tất cả các phân tích sẽ được thực hiện dựa trên dữ liệu đang được hiển thị tại đây.</li>
+                            <li><strong>Tổng quan Thị trường:</strong> Cung cấp cái nhìn toàn cảnh về định vị giá của các thương hiệu và sự phân bổ của các chủng loại cà phê.</li>
+                            <li><strong>Phân tích Cạnh tranh:</strong> Trực quan hóa vị thế của các thương hiệu trên thị trường dựa trên giá trung bình và số lượng sản phẩm (SKUs).</li>
+                            <li><strong>Vận hành Logistics:</strong> Tích hợp mô phỏng tổng chi phí thực tế khách hàng phải trả dựa trên giá trị giỏ hàng và chính sách freeship của từng thương hiệu.</li>
+                            <li><strong>Phân tích AI:</strong> Cho phép bạn đặt câu hỏi bằng ngôn ngữ tự nhiên để nhận được các phân tích và khuyến nghị chiến lược từ AI dựa trên các thống kê từ dữ liệu hiện tại.</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-semibold mb-2 text-gray-900">Chức năng Tab Dữ liệu SST</h3>
+                 <ul class="list-disc list-inside space-y-2 pl-2">
+                    <li><strong>Thêm dữ liệu:</strong> Cho phép bạn tải lên một file CSV để bổ sung dữ liệu vào hệ thống. Hệ thống sẽ tự động gán các ID duy nhất cho các hàng không có ID.</li>
+                    <li><strong>Tạo file CSV:</strong> Tải xuống toàn bộ dữ liệu đang hiển thị ra file CSV.</li>
+                    <li><strong>Thiết lập Hiển thị & Khóa:</strong>
+                        <ul class="list-disc list-inside ml-5 mt-1 space-y-2">
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0 w-6 flex justify-center pt-0.5">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                                        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
+                                    </svg>
+                                </div>
+                                <span class="ml-2">Bật/tắt hiển thị của từng cột trên lưới hiển thị.</span>
+                            </li>
+                            <li class="flex items-start">
+                                <div class="flex-shrink-0 w-6 flex justify-center pt-0.5">
+                                    <input id="deduplicate-key" type="checkbox" class="form-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500" checked>
+                                </div>
+                                <label for="deduplicate-key" class="ml-2">
+                                    Chọn các cột làm "khóa" để chống trùng lặp. Các hàng có cùng giá trị trên tất cả các cột đã chọn sẽ bị ẩn đi, chỉ giữ lại hàng đầu tiên theo thứ tự sắp xếp hiện tại.
+                                </label>
+                            </li>
+                        </ul>
+                    </li>
+                     <li><strong>Kiểm tra cập nhật giá:</strong> Tự động truy cập vào các "Link Mô tả" (cột "Link") và cập nhật lại giá cho các sản phẩm. Trạng thái sẽ được cập nhật:
+                        <ul class="list-disc list-inside ml-5 mt-1 space-y-1">
+                            <li><strong>Mới:</strong> Giá đã thay đổi. Nhấn vào nút để tạo một phiên bản mới với giá đã cập nhật.</li>
+                            <li><strong>Cảnh báo (số):</strong> Không tìm thấy giá bằng việc scraping với selector (cột "HTML"), nhưng tìm thấy nhiều hơn 1 kết quả khớp với giá cũ trong hàng dữ liệu. Cần cập nhật lại selector để có thể scraping thành công.</li>
+                            <li><strong>Lỗi:</strong> Không tìm thấy giá bằng việc scraping với selector (cột "HTML") và cũng không tìm thấy giá khớp với giá cũ trong hàng dữ liệu. Nhiều khả năng URL đã bị thay đổi.</li>
+                        </ul>
+                     </li>
+                     <li><strong>Thêm tất cả thay đổi:</strong> Tự động tạo phiên bản mới cho tất cả các hàng có trạng thái là "Mới".</li>
+                </ul>
+            </div>
+
+             <div>
+                <h3 class="text-lg font-semibold mb-2 text-gray-900">Hàng đợi Tác vụ</h3>
+                <p>Hàng đợi này xuất hiện khi bạn chạy chức năng "Kiểm tra cập nhật giá". Nó cho phép bạn theo dõi tiến trình và quản lý các tác vụ. Bạn có thể kéo thả, thu gọn để tiết kiệm không gian.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // --- 1. DATA SECTION (SYNCHRONIZED SST) ---
+    // Set sst_data to empty as requested for debugging.
+    let sst_data = [];
+    
+    // --- 3. GLOBAL STATE & UTILS ---
+    let charts = {};
+    let taskQueue = [];
+    let avgTaskTime = 15000;
+    let completedTaskTimes = [];
+    let sstGridOptions;
+    let deduplicationKeys = ["ID", "Sản phẩm", "Thương hiệu", "Nguồn", "Link Mô tả", "Loại Cà phê", "Đơn vị tính", "Giá niêm yết (VND)", "Phí ship (VND)", "Ngưỡng Freeship (VND)", "Tại Địa Phương", "HTML", "date", "updateStatus", "Nền tảng TMĐT"];
+    let geminiApiKey = sessionStorage.getItem('geminiApiKey') || null;
+
+    const getFormattedDate = () => {
+        const today = new Date();
+        const year = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        return `${year}-${mm}-${dd}`;
+    };
+
+    const parseWeight = (weightStr) => {
+        if (!weightStr) return 0;
+        const value = parseFloat(String(weightStr).replace(/,/g, ''));
+        if (String(weightStr).toLowerCase().includes('kg')) return value * 1000;
+        return value;
+    };
+
+    const calculatePricePerKg = (item) => {
+        const price = parseNumericValue(item['Giá niêm yết (VND)']);
+        const weightInGrams = parseWeight(item['Đơn vị tính']);
+        if (weightInGrams === 0 || !price) return 0;
+        return (price / weightInGrams) * 1000;
+    };
+
+    const parseDateString = (dateStr) => {
+        if (!dateStr || typeof dateStr !== 'string') return null;
+        
+        let d;
+        const parts = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+        if (parts) {
+            const isoDateStr = `${parts[3]}-${String(parts[2]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}T00:00:00`;
+            d = new Date(isoDateStr);
+            if (!isNaN(d.getTime())) return d;
+        }
+
+        d = new Date(dateStr);
+        if (!isNaN(d.getTime())) return d;
+        
+        return null;
+    };
+
+    const parseCsvLine = (line) => {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                if (inQuotes && line[i + 1] === '"') {
+                    current += '"';
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (char === ',' && !inQuotes) {
+                result.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        result.push(current);
+        return result;
+    };
+
+    const generateSelectorFromHtml = (htmlString) => {
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlString, 'text/html');
+            let deepestElement = null;
+            let maxDepth = -1;
+
+            function findDeepest(elem, depth) {
+                if (elem.nodeType === Node.ELEMENT_NODE && elem.textContent && /\d/.test(elem.textContent)) {
+                    if (depth > maxDepth) {
+                        maxDepth = depth;
+                        deepestElement = elem;
+                    }
+                }
+                for (const child of elem.children) {
+                    findDeepest(child, depth + 1);
+                }
+            }
+
+            findDeepest(doc.body, 0);
+
+            if (!deepestElement) return null;
+
+            let current = deepestElement;
+            let path = [];
+            
+            while(current && current.tagName && current.tagName.toLowerCase() !== 'body') {
+                const tagName = current.tagName.toLowerCase();
+                const id = current.id;
+                const classes = Array.from(current.classList).filter(c => c && typeof c === 'string').join('.');
+                
+                let segment = tagName;
+                if (id) {
+                    segment = `#${id}`;
+                    path.unshift(segment);
+                    break; 
+                } else if (classes) {
+                    segment += `.${classes}`;
+                }
+
+                path.unshift(segment);
+
+                if (classes && !['price', 'amount'].every(c => classes.includes(c))) {
+                    break;
+                }
+                
+                current = current.parentElement;
+            }
+
+            return path.join(' > ');
+
+        } catch (e) {
+            console.error("Error generating selector from HTML:", e);
+            return null;
+        }
+    };
+
+    const parseNumericValue = (value) => {
+        if (typeof value !== 'string' && typeof value !== 'number') {
+            return null;
+        }
+        const strValue = String(value);
+        const match = strValue.match(/(\d[\d,.]*)/);
+        if (match) {
+            return parseFloat(match[0].replace(/,/g, ''));
+        }
+        return null;
+    };
+
+    const makeDraggable = (element, handle) => {
+        let active = false;
+        let startMouseX, startMouseY;
+        let startElemX, startElemY;
+
+        handle.addEventListener("mousedown", dragStart, false);
+
+        function dragStart(e) {
+            // Ngăn chặn các hành vi mặc định (như chọn văn bản)
+            e.preventDefault();
+
+            // Lấy vị trí ban đầu của con trỏ chuột
+            startMouseX = e.clientX;
+            startMouseY = e.clientY;
+
+            // Lấy vị trí transform hiện tại của phần tử
+            const transformMatrix = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
+            startElemX = transformMatrix.m41;
+            startElemY = transformMatrix.m42;
+            
+            // Kích hoạt trạng thái kéo
+            active = true;
+
+            // Lắng nghe sự kiện trên toàn bộ tài liệu để kéo không bị gián đoạn
+            document.addEventListener("mousemove", drag, false);
+            document.addEventListener("mouseup", dragEnd, false);
+        }
+
+        function drag(e) {
+            if (active) {
+                // Tính toán khoảng cách chuột đã di chuyển so với điểm bắt đầu
+                const deltaX = e.clientX - startMouseX;
+                const deltaY = e.clientY - startMouseY;
+
+                // Vị trí mới = Vị trí ban đầu của phần tử + Khoảng cách chuột đã di chuyển
+                const newX = startElemX + deltaX;
+                const newY = startElemY + deltaY;
+
+                // Áp dụng vị trí mới bằng transform3d để tối ưu hiệu suất
+                element.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
+            }
+        }
+
+        function dragEnd(e) {
+            // Hủy trạng thái kéo
+            active = false;
+            // Dọn dẹp các sự kiện lắng nghe để tiết kiệm tài nguyên
+            document.removeEventListener("mousemove", drag, false);
+            document.removeEventListener("mouseup", dragEnd, false);
+            adjustTaskQueuePosition();
+        }
+    };
+
+    const adjustTaskQueuePosition = () => {
+        const element = document.getElementById('task-queue-container');
+        // Lấy kích thước của cửa sổ trình duyệt
+        const chieuRongManHinh = window.innerWidth;
+        const chieuCaoManHinh = window.innerHeight;
+        const khoangDem = 16; // Khoảng đệm 1rem để không bị dính sát vào cạnh
+
+        // Lấy thông tin vị trí và kích thước hiện tại của thanh Hàng đợi
+        const rect = element.getBoundingClientRect();
+
+        // Lấy giá trị transform X và Y hiện tại một lần duy nhất
+        const transformMatrix = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
+        let viTriX_Moi = transformMatrix.m41;
+        let viTriY_Moi = transformMatrix.m42;
+
+        // --- Kiểm tra và tính toán vị trí mới cho cả 4 cạnh ---
+
+        // 1. Kiểm tra cạnh phải
+        if (rect.right > chieuRongManHinh) {
+            viTriX_Moi -= (rect.right - chieuRongManHinh + khoangDem);
+        }
+
+        // 2. Kiểm tra cạnh trái
+        if (rect.left < 0) {
+            viTriX_Moi += (Math.abs(rect.left) + khoangDem);
+        }
+
+        // 3. Kiểm tra cạnh dưới
+        if (rect.bottom > chieuCaoManHinh) {
+            viTriY_Moi -= (rect.bottom - chieuCaoManHinh + khoangDem);
+        }
+
+        // 4. Kiểm tra cạnh trên
+        if (rect.top < 0) {
+            viTriY_Moi += (Math.abs(rect.top) + khoangDem);
+        }
+
+        // Áp dụng vị trí đã được điều chỉnh một lần duy nhất
+        element.style.transform = `translate3d(${viTriX_Moi}px, ${viTriY_Moi}px, 0)`;
+    };
+
+
+    // --- 4. FUNCTION DEFINITIONS ---
+    const createChart = (ctx, type, data, options) => {
+        if (charts[ctx.canvas.id]) charts[ctx.canvas.id].destroy();
+        charts[ctx.canvas.id] = new Chart(ctx, { type, data, options });
+    };
+
+    const updateChartsFromGridData = () => {
+        const dataForCharts = [];
+        if (sstGridOptions.api) {
+            sstGridOptions.api.forEachNodeAfterFilter(node => {
+                dataForCharts.push(node.data);
+            });
+        }
+        
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        switch(activeTab) {
+            case 'marketOverviewTab':
+                updateBrandPriceChart(dataForCharts);
+                updateCoffeeTypeChart(dataForCharts);
+                break;
+            case 'competitiveAnalysisTab':
+                updateBrandPositioningChart(dataForCharts);
+                break;
+            case 'logisticsTab':
+                updateFreeshipChart(dataForCharts);
+                break;
+        }
+    };
+
+    const filterDataByDateRange = (data, startDate, endDate) => {
+        filteredData = [...data];
+        if (!(!startDate || !endDate)) {
+            const start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0).getTime();
+            const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999).getTime();
+
+            filteredData = filteredData.filter(item => {
+                const itemDate = parseDateString(item.date);
+                if (!itemDate) return false;
+                const itemTime = itemDate.getTime();
+                return itemTime >= start && itemTime <= end;
+            });
+        }
+        return filteredData;
+    };
+
+    const dedupData = (data) => {
+        filteredData = [...data];
+        if (deduplicationKeys.length === 0) return;
+
+        const seen = new Set();
+        const rowsToRemove = [];
+        const rowsToKeep = [];
+        const nodesToProcess = [];
+        
+        filteredData.forEach(item => {
+            const key = deduplicationKeys.map(k => item[k]).join('||');
+            console.log(`Checking item with key: ${key}`);
+            if (seen.has(key)) {
+                rowsToRemove.push(item);
+            } else {
+                seen.add(key);
+                rowsToKeep.push(item);
+            }
+        });
+
+        if (rowsToRemove.length > 0) {
+            filteredData = rowsToKeep;
+        }
+
+        return filteredData;
+    };
+
+    const applyAllFilters = (startDate, endDate) => {
+        filteredData = [...sst_data];
+        
+        const fromDate = picker.getStartDate();
+        const toDate = picker.getEndDate();
+        filteredData = filterDataByDateRange(filteredData, fromDate, toDate);
+        filteredData = dedupData(filteredData);
+
+        
+
+        currentFilteredData = filteredData;
+        rowsToRemove = currentFilteredData.filter(item => !filteredData.includes(item));
+        console.log("rowsToRemove:", rowsToRemove);
+        if (sstGridOptions && sstGridOptions.api) {
+            sstGridOptions.api.applyTransaction({ remove: rowsToRemove });
+            sstGridOptions.api.setRowData(currentFilteredData);
+        }
+    };
+
+    const updateBrandPriceChart = (data) => {
+        const brandData = data.reduce((acc, item) => {
+            const brand = item['Thương hiệu'];
+            if (!acc[brand]) acc[brand] = { total_price_per_kg: 0, count: 0 };
+            const pricePerKg = calculatePricePerKg(item);
+            if(pricePerKg > 0) {
+                acc[brand].total_price_per_kg += pricePerKg;
+                acc[brand].count++;
+            }
+            return acc;
+        }, {});
+        const labels = Object.keys(brandData).filter(brand => brandData[brand].count > 0);
+        const avgPrices = labels.map(brand => brandData[brand].total_price_per_kg / brandData[brand].count);
+        const ctx = document.getElementById('brandPriceChart').getContext('2d');
+        createChart(ctx, 'bar', {
+            labels,
+            datasets: [{
+                label: 'Giá trung bình (VND/kg)',
+                data: avgPrices,
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        }, {
+            indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, ticks: { callback: value => value.toLocaleString('vi-VN') + 'đ' } } },
+            plugins: { legend: { display: false } }
+        });
+    };
+
+    const updateCoffeeTypeChart = (data) => {
+        const typeData = data.reduce((acc, item) => {
+            let type = 'Blend';
+            const coffeeType = item['Loại Cà phê'] ? item['Loại Cà phê'].toLowerCase() : '';
+            if (coffeeType.includes('robusta') && !coffeeType.includes('arabica')) type = '100% Robusta';
+            else if (coffeeType.includes('arabica') && !coffeeType.includes('robusta')) type = '100% Arabica';
+            else if (coffeeType.includes('specialty') || coffeeType.includes('moka') || coffeeType.includes('bourbon') || coffeeType.includes('organic') || coffeeType.includes('yirgacheffe') || coffeeType.includes('honduras')) type = 'Specialty/Single Origin';
+            acc[type] = (acc[type] || 0) + 1;
+            return acc;
+        }, {});
+        const ctx = document.getElementById('coffeeTypeChart').getContext('2d');
+        createChart(ctx, 'doughnut', {
+            labels: Object.keys(typeData),
+            datasets: [{ data: Object.values(typeData), backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'] }]
+        }, { responsive: true, maintainAspectRatio: false });
+    };
+    
+    const updateBrandPositioningChart = (data) => {
+      const pricesPerKg = data.map(item => calculatePricePerKg(item)).filter(p => p !== null && isFinite(p));
+      pricesPerKg.sort((a, b) => a - b);
+
+      const getPercentile = (arr, q) => {
+          if (arr.length === 0) return null;
+          const pos = (arr.length - 1) * q;
+          const base = Math.floor(pos);
+          const rest = pos - base;
+          if (arr[base + 1] !== undefined) {
+              return arr[base] + rest * (arr[base + 1] - arr[base]);
+          } else {
+              return arr[base];
+          }
+      };
+
+      const q1 = getPercentile(pricesPerKg, 0.25);
+      const q3 = getPercentile(pricesPerKg, 0.75);
+        
+      const brandData = data.reduce((acc, item) => {
+        const brand = item['Thương hiệu'];
+        if (!acc[brand]) acc[brand] = { skus: 0, total_price_per_kg: 0, count: 0 };
+        acc[brand].skus++;
+        const pricePerKg = calculatePricePerKg(item);
+        if (pricePerKg > 0) {
+          acc[brand].total_price_per_kg += pricePerKg;
+          acc[brand].count++;
+        }
+        return acc;
+      }, {});
+
+      const brandColors = {};
+      const colorPalette = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075'];
+      Object.keys(brandData).forEach((brand, index) => {
+        brandColors[brand] = colorPalette[index % colorPalette.length];
+      });
+
+      const segmentColors = {
+        'Phổ thông': 'rgba(54, 162, 235, 0.7)',
+        'Trung-Cao cấp': 'rgba(255, 206, 86, 0.7)',
+        'Đặc sản/Luxury': 'rgba(255, 99, 132, 0.7)'
+      };
+
+      const groupedBySegment = {
+        'Phổ thông': [],
+        'Trung-Cao cấp': [],
+        'Đặc sản/Luxury': []
+      };
+
+      Object.keys(brandData).forEach((brand) => {
+        const stats = brandData[brand];
+        const avgPrice = stats.count > 0 ? stats.total_price_per_kg / stats.count : 0;
+        const skus = stats.skus;
+        let segment = 'Phổ thông';
+        const dataForAI = [];
+        sstGridOptions.api.forEachNodeAfterFilter(node => dataForAI.push(node.data));
+        
+        const global_stats = calculateStats(dataForAI);
+        if (avgPrice > (global_stats.price_percentile_75*1000)) segment = 'Đặc sản/Luxury';
+        else if (avgPrice >= (global_stats.price_percentile_25*1000)) segment = 'Trung-Cao cấp';
+
+        groupedBySegment[segment].push({
+          x: avgPrice,
+          y: skus,
+          r: skus * 4 + 6,
+          brand: brand
+        });
+      });
+
+      const datasets = Object.entries(groupedBySegment)
+        .filter(([_, points]) => points.length > 0)
+        .map(([segment, points]) => ({
+          label: segment,
+          data: points,
+          backgroundColor: segmentColors[segment],
+          borderColor: segmentColors[segment],
+          borderWidth: 2
+        }));
+
+      const ctx = document.getElementById('brandPositioningChart').getContext('2d');
+      createChart(ctx, 'bubble', { datasets }, {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: { display: true, text: 'Mức giá trung bình/kg (VND)' },
+              ticks: {
+                callback: value => value.toLocaleString('vi-VN') + 'đ'
+              }
+            },
+            y: {
+              title: { display: true, text: 'Số lượng dòng sản phẩm (SKUs)' },
+              beginAtZero: true,
+              ticks: { stepSize: 1 }
+            }
+          },
+          plugins: {
+            title: { display: true, text: 'Phân khúc Thương hiệu theo AI' }, 
+            legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                  boxWidth: 20,
+                  padding: 15
+                }
+            },
+            tooltip: {
+              callbacks: {
+                title: (ctx) => `${ctx[0]?.dataset?.label}`,
+                label: function(context) {
+                  const item = context.raw;
+                  return `${item.brand}: (Giá TB: ${Math.round(item.x).toLocaleString('vi-VN')}đ, SKU: ${item.y})`;
+                }
+              }
+            }
+          }
+        });
+    };
+
+    const updateFreeshipChart = (data) => {
+        const datasets = [];
+        const colors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075'];
+        const uniqueBrands = [...new Set(data.map(item => item['Thương hiệu']))];
+        const phiShipMacDinh = parseInt(document.getElementById('input-default-ship-fee').value);
+
+        uniqueBrands.forEach((brand, index) => {
+            const brandData = data.find(item => item['Thương hiệu'] === brand);
+            const freeship = parseNumericValue(brandData?.['Ngưỡng Freeship (VND)']);
+            const fee = parseNumericValue(brandData?.['Phí ship (VND)']) || phiShipMacDinh;
+
+            if (freeship === null) return;
+
+            const dataPoints = [];
+            for (let value = 0; value <= 700000; value += 25000) {
+                let totalCost = (value > 0 && value < freeship) ? value + fee : value;
+                dataPoints.push({ x: value, y: totalCost });
+            }
+            datasets.push({
+                label: brand, data: dataPoints, borderColor: colors[index % colors.length],
+                fill: false, tension: 0.1
+            });
+        });
+
+        const ctx = document.getElementById('freeshipChart').getContext('2d');
+        createChart(ctx, 'line', { datasets }, {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Giá trị giỏ hàng (VND)' }, ticks: { callback: value => value.toLocaleString('vi-VN') + 'đ' } },
+                y: { title: { display: true, text: 'Tổng chi phí khách hàng trả (VND)' }, ticks: { callback: value => value.toLocaleString('vi-VN') + 'đ' } }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: (ctx) => `Giỏ hàng: ${ctx[0].parsed.x.toLocaleString('vi-VN')}đ`,
+                        label: (ctx) => `${ctx.dataset.label}: Tổng trả ${ctx.parsed.y.toLocaleString('vi-VN')}đ`
+                    }
+                }
+            }
+        });
+    };
+
+    const addMessage = (text, sender, elementId = null) => {
+        const chatMessages = document.getElementById('chat-messages');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message');
+        if (elementId) {
+            messageDiv.id = elementId;
+        }
+
+        if (sender === 'user') {
+            messageDiv.classList.add('user-message');
+            messageDiv.textContent = text;
+        } else if (sender === 'bot') {
+            messageDiv.classList.add('bot-message');
+            messageDiv.innerHTML = text; // Use innerHTML to render formatted text
+        } else if (sender === 'loading') {
+            messageDiv.classList.add('loading-message');
+            messageDiv.textContent = text;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return messageDiv;
+    };
+
+    const calculateStats = (data) => {
+        if (!data || data.length === 0) {
+            return { error: "No data available for analysis." };
+        }
+
+        const pricesPerKg = data.map(item => calculatePricePerKg(item)).filter(p => p !== null && isFinite(p));
+        pricesPerKg.sort((a, b) => a - b);
+
+        const getPercentile = (arr, q) => {
+            if (arr.length === 0) return null;
+            const pos = (arr.length - 1) * q;
+            const base = Math.floor(pos);
+            const rest = pos - base;
+            if (arr[base + 1] !== undefined) {
+                return arr[base] + rest * (arr[base + 1] - arr[base]);
+            } else {
+                return arr[base];
+            }
+        };
+        
+        const freeshipSeries = data.map(item => parseNumericValue(item['Ngưỡng Freeship (VND)'])).filter(v => v !== null);
+        freeshipSeries.sort((a, b) => a - b);
+
+        const stats = {
+            num_products: data.length,
+            num_brands: new Set(data.map(item => item['Thương hiệu'])).size,
+            current_year: new Date().getFullYear(),
+            price_min_per_kg: pricesPerKg.length > 0 ? Math.round(pricesPerKg[0]).toLocaleString('vi-VN') : 'N/A',
+            price_max_per_kg: pricesPerKg.length > 0 ? Math.round(pricesPerKg[pricesPerKg.length - 1]).toLocaleString('vi-VN') : 'N/A',
+            price_percentile_25: pricesPerKg.length > 0 ? Math.round(getPercentile(pricesPerKg, 0.25)).toLocaleString('vi-VN') : 'N/A',
+            price_percentile_75: pricesPerKg.length > 0 ? Math.round(getPercentile(pricesPerKg, 0.75)).toLocaleString('vi-VN') : 'N/A',
+            main_sources: [...new Set(data.map(item => item['Nguồn']))].slice(0, 5).join(', ') + (new Set(data.map(item => item['Nguồn'])).size > 5 ? '...' : ''),
+            freeship_threshold_min: freeshipSeries.length > 0 ? Math.round(freeshipSeries[0]).toLocaleString('vi-VN') : 'N/A',
+            freeship_threshold_max: freeshipSeries.length > 0 ? Math.round(freeshipSeries[freeshipSeries.length - 1]).toLocaleString('vi-VN') : 'N/A',
+            freeship_threshold_avg: freeshipSeries.length > 0 ? Math.round(getPercentile(freeshipSeries, 0.5)).toLocaleString('vi-VN') : 'N/A', // Median
+        };
+
+        return stats;
+    };
+
+    const generateDynamicPrompt = (stats, userQuestion) => {
+        if (stats.error) {
+            return `Error: ${stats.error}`;
+        }
+
+        const promptTemplate = `
+**Bối cảnh và Vai trò:**
+Bạn là một AI chuyên gia phân tích chiến lược thị trường bán lẻ, được cung cấp một bộ dữ liệu (SST) gồm **{num_products}** sản phẩm cà phê từ **{num_brands}** thương hiệu khác nhau tại Việt Nam, được thu thập trong khoảng thời gian năm **{current_year}**. Nhiệm vụ của bạn là đưa ra các kết luận và khuyến nghị chiến lược dựa trên dữ liệu này, trả lời câu hỏi của người dùng theo một tư duy phân tích sâu sắc.
+
+**Tư tưởng Phân tích Cốt lõi (Core Analytical Philosophy):**
+Khi phân tích, hãy luôn ghi nhớ những nguyên tắc sau:
+1.  **Thị trường là đa tầng, không phẳng:** Đừng nhìn vào giá trung bình một cách đơn thuần. Hãy phân tích thị trường qua các phân khúc giá. Dữ liệu cho thấy một sự phân hóa rõ rệt:
+    * **Phổ thông (dưới {price_percentile_25} VND/kg):** Cuộc chiến về giá.
+    * **Trung cấp ({price_percentile_25} - {price_percentile_75} VND/kg):** Sân chơi của các thương hiệu chuỗi và các nhà rang xay mới nổi, cạnh tranh bằng sự cân bằng giữa chất lượng và giá.
+    * **Cao cấp & Đặc sản (trên {price_percentile_75} VND/kg):** Cạnh tranh bằng câu chuyện, sự minh bạch và chất lượng vượt trội.
+2.  **Logistics là một vũ khí chiến lược:** Chính sách vận chuyển định hình lại bản đồ cạnh tranh. Ngưỡng freeship (dao động từ **{freeship_threshold_min} VND** đến **{freeship_threshold_max} VND** trong bộ dữ liệu này) không phải là chi phí, mà là một công cụ tâm lý để tối ưu hóa giá trị đơn hàng trung bình (AOV).
+3.  **Minh bạch xây dựng lòng tin:** Ở phân khúc cao cấp, khách hàng yêu cầu sự minh bạch tuyệt đối về nguồn gốc, tỷ lệ phối trộn và phương pháp chế biến. Đây là một yêu cầu bắt buộc, không phải là một lựa chọn.
+
+**Dữ liệu Tóm tắt từ SST:**
+* **Khoảng giá (đã chuẩn hóa theo kg):** Từ **{price_min_per_kg} VND/kg** đến **{price_max_per_kg} VND/kg**.
+* **Các kênh bán hàng chính:** **{main_sources}**.
+* **Ngưỡng Freeship phổ biến:** Dao động quanh mức **{freeship_threshold_avg} VND**.
+
+**Yêu cầu Nhiệm vụ:**
+Dựa trên toàn bộ bối cảnh, tư tưởng và dữ liệu tóm tắt ở trên, hãy trả lời câu hỏi sau của người dùng một cách sâu sắc và chiến lược:
+
+**"{user_question}"**
+
+**Định dạng Đầu ra:**
+Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm bảo tính logic và dễ theo dõi:
+1.  **Tổng kết các Insight Then chốt:** Nêu bật những phát hiện quan trọng nhất từ dữ liệu.
+2.  **Phân tích Chân dung Khách hàng:** Mô tả các nhóm khách hàng mục tiêu và hành vi của họ, đặc biệt là sự nhạy cảm về giá và logistics.
+3.  **Khuyến nghị Chiến lược:** Đưa ra các đề xuất cụ thể, có tính hành động về (a) Sản phẩm và Giá, và (b) Logistics và Trải nghiệm Khách hàng.
+`;
+        
+        let finalPrompt = promptTemplate;
+        for (const key in stats) {
+            finalPrompt = finalPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), stats[key]);
+        }
+        finalPrompt = finalPrompt.replace('{user_question}', userQuestion);
+
+        return finalPrompt;
+    };
+
+    const handleChatSubmit = async () => {
+        const chatInput = document.getElementById('chat-input');
+        const userQuery = chatInput.value.trim();
+        if (!userQuery) return;
+
+        if (!geminiApiKey) {
+            document.getElementById('api-key-modal').classList.remove('hidden');
+            return;
+        }
+
+        addMessage(userQuery, 'user');
+        chatInput.value = '';
+        chatInput.disabled = true;
+        document.getElementById('chat-submit').disabled = true;
+
+        const loadingMsgId = `loading-${Date.now()}`;
+        addMessage('Chuyên gia AI đang phân tích...', 'loading', loadingMsgId);
+
+        try {
+            const dataForAI = [];
+            sstGridOptions.api.forEachNodeAfterFilter(node => dataForAI.push(node.data));
+            
+            const stats = calculateStats(dataForAI);
+            const prompt = generateDynamicPrompt(stats, userQuery);
+
+            if (prompt.startsWith('Error:')) {
+                throw new Error(prompt);
+            }
+            
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+            
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }]
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const result = await response.json();
+            
+            let botResponse = "Xin lỗi, tôi không thể tạo phản hồi vào lúc này.";
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                botResponse = result.candidates[0].content.parts[0].text;
+            }
+            
+            const loadingElement = document.getElementById(loadingMsgId);
+            if (loadingElement) loadingElement.remove();
+            addMessage(botResponse, 'bot');
+
+        } catch (error) {
+            console.error("Error during AI analysis:", error);
+            const loadingElement = document.getElementById(loadingMsgId);
+            if (loadingElement) loadingElement.remove();
+            addMessage(`Đã xảy ra lỗi trong quá trình phân tích: ${error.message}`, 'bot');
+        } finally {
+            chatInput.disabled = false;
+            document.getElementById('chat-submit').disabled = false;
+            chatInput.focus();
+        }
+    };
+
+    const renderTaskQueue = () => {
+        const taskQueueBody = document.getElementById('task-queue-body');
+        const taskCountSpan = document.getElementById('task-count');
+        const taskQueueContainer = document.getElementById('task-queue-container');
+
+        taskQueueBody.innerHTML = '';
+        taskCountSpan.textContent = taskQueue.length;
+        taskQueueContainer.classList.toggle('hidden', taskQueue.length === 0);
+
+        taskQueue.forEach((task, index) => {
+            const taskElement = document.createElement('div');
+            taskElement.id = `task-${task.id}`;
+            taskElement.className = 'p-2 border rounded-md bg-gray-50';
+            
+            const isRunning = index === 0;
+            const cancelBtnHtml = `
+                <button 
+                    class="cancel-task-btn text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed" 
+                    data-task-id="${task.id}"
+                    title="${isRunning ? 'Không thể hủy tác vụ đang chạy' : 'Xóa tác vụ khỏi hàng đợi'}"
+                    ${isRunning ? 'disabled' : ''}>
+                    &times;
+                </button>`;
+
+            taskElement.innerHTML = `
+                <div class="flex justify-between items-center text-sm">
+                    <span class="font-medium truncate pr-2">${task.id}: ${task.name}</span>
+                    ${cancelBtnHtml}
+                </div>
+                <div class="mt-2 h-2 progress-bar">
+                    <div class="h-full progress-bar-fill" style="width: ${task.progress || 0}%;"></div>
+                </div>
+            `;
+            taskQueueBody.appendChild(taskElement);
+        });
+
+        document.querySelectorAll('.cancel-task-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const taskId = e.currentTarget.dataset.taskId;
+                taskQueue = taskQueue.filter(t => t.id !== taskId);
+                renderTaskQueue();
+            });
+        });
+    };
+    
+    const updateAddAllButtonVisibility = () => {
+        const addAllBtn = document.getElementById('add-all-btn');
+        let hasNewItems = false;
+        sstGridOptions.api.forEachNode(node => {
+            if (node.data.updateStatus === 'Mới') {
+                hasNewItems = true;
+            }
+        });
+        addAllBtn.classList.toggle('hidden', !hasNewItems);
+    };
+
+    const processQueue = async () => {
+        const checkPriceBtn = document.getElementById('check-price-btn');
+        if (taskQueue.length === 0) {
+            checkPriceBtn.disabled = false;
+            updateAddAllButtonVisibility();
+            return;
+        }
+
+        checkPriceBtn.disabled = true;
+        const task = taskQueue[0];
+        renderTaskQueue(); // Re-render to disable the cancel button for the running task
+        
+        const taskElement = document.getElementById(`task-${task.id}`);
+        if (!taskElement) { 
+            taskQueue.shift();
+            processQueue();
+            return;
+        }
+
+        const progressBarFill = taskElement.querySelector('.progress-bar-fill');
+        task.progress = 0;
+        const interval = setInterval(() => {
+            if (task.progress < 95) {
+                task.progress += 100 / (avgTaskTime / 1000);
+                progressBarFill.style.width = `${task.progress}%`;
+            }
+        }, 1000);
+        
+        const startTime = Date.now();
+        task.controller = new AbortController();
+        const signal = task.controller.signal;
+
+        try {
+            let selectorForApi = task.selector;
+            if (selectorForApi && selectorForApi.trim().startsWith('<')) {
+                const generatedSelector = generateSelectorFromHtml(selectorForApi);
+                if (generatedSelector) {
+                    console.log(`Converted raw HTML to selector: '${selectorForApi}' -> '${generatedSelector}'`);
+                    selectorForApi = generatedSelector;
+                } else {
+                    throw new Error("Failed to generate selector from raw HTML.");
+                }
+            }
+
+            const response = await fetch('/api/check-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: task.url, selector: selectorForApi }),
+                signal
+            });
+
+            const result = await response.json();
+            const node = sstGridOptions.api.getRowNode(task.id);
+
+            if (node) {
+                if (response.ok && result.price !== null) {
+                    const newPrice = parseNumericValue(result.price);
+                    const oldPrice = parseNumericValue(node.data['Giá niêm yết (VND)']);
+                    if (newPrice !== null && oldPrice !== null && newPrice !== oldPrice) {
+                        node.data.updateStatus = 'Mới';
+                        node.data.newPrice = newPrice;
+                    } else {
+                        node.data.updateStatus = 'Đã';
+                    }
+                } else {
+                    throw new Error(result.error || "Primary scraping failed.");
+                }
+                sstGridOptions.api.refreshCells({ rowNodes: [node], columns: ['updateStatus'] });
+            }
+
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log(`Task ${task.id} aborted.`);
+            } else {
+                console.warn(`Primary scraping for ${task.id} failed:`, error.message, ". Attempting fallback.");
+                try {
+                    const oldPrice = parseNumericValue(task.originalPrice);
+                    if (oldPrice === null) throw new Error("No valid original price for fallback.");
+
+                    const fallbackResponse = await fetch('/api/verify-price-by-text', {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify({ url: task.url, price: oldPrice }),
+                         signal
+                    });
+                    const fallbackResult = await fallbackResponse.json();
+                    const node = sstGridOptions.api.getRowNode(task.id);
+                    if (node) {
+                        if (fallbackResponse.ok && fallbackResult.found_uniquely) {
+                            node.data.updateStatus = 'Lỗi';
+                            node.data.matchCount = 1;
+                        } else {
+                            node.data.updateStatus = 'Lỗi';
+                            node.data.matchCount = fallbackResult.match_count;
+                        }
+                        sstGridOptions.api.refreshCells({ rowNodes: [node], columns: ['updateStatus'] });
+                    }
+                } catch (fallbackError) {
+                     if (fallbackError.name === 'AbortError') {
+                        console.log(`Fallback for task ${task.id} aborted.`);
+                    } else {
+                        console.error(`Fallback for ${task.id} also failed:`, fallbackError.message);
+                        const node = sstGridOptions.api.getRowNode(task.id);
+                        if (node) {
+                            node.data.updateStatus = 'Lỗi';
+                             node.data.matchCount = -1; // Indicate error
+                            sstGridOptions.api.refreshCells({ rowNodes: [node], columns: ['updateStatus'] });
+                        }
+                    }
+                }
+            }
+        } finally {
+            clearInterval(interval);
+            if (taskElement) {
+                progressBarFill.style.width = '100%';
+            }
+            const endTime = Date.now();
+            completedTaskTimes.push(endTime - startTime);
+            avgTaskTime = completedTaskTimes.reduce((a, b) => a + b, 0) / completedTaskTimes.length;
+            
+            setTimeout(() => {
+                taskQueue.shift();
+                renderTaskQueue();
+                processQueue();
+            }, 500);
+        }
+    };
+
+    const createNewVersion = (node) => {
+        let nextIdSuffix = 0;
+        const originalData = node.data;
+        const newRowData = { ...originalData }; 
+
+        const originalId = originalData.ID;
+        const baseId = originalId.split('-v')[0]; 
+
+        const lastVIndex = originalId.lastIndexOf('-v');
+
+        if (lastVIndex !== -1) {
+            const suffixString = originalId.substring(lastVIndex + 2);
+            const parsedSuffix = parseInt(suffixString, 10);
+            
+            if (!isNaN(parsedSuffix)) {
+                nextIdSuffix = parsedSuffix;
+            }
+        }
+
+        nextIdSuffix = nextIdSuffix + 1;
+
+        // Set the new price for the new row
+        newRowData['Giá niêm yết (VND)'] = originalData.newPrice;
+        delete newRowData.newPrice; // Clean up temporary property
+        delete newRowData.matchCount; // Clean up temporary property
+
+        newRowData.ID = `${baseId}-v${nextIdSuffix}`;
+        newRowData.date = getFormattedDate();
+        newRowData.updateStatus = 'Đã';
+
+        // Prepare the old row for update
+        const updatedOriginalData = { ...originalData };
+        delete updatedOriginalData.newPrice; // Clean up temporary property
+        updatedOriginalData.updateStatus = 'Cũ';
+        
+        const originalIndexInMaster = sst_data.findIndex(item => item.ID === originalData.ID);
+        if (originalIndexInMaster !== -1) {
+            sst_data[originalIndexInMaster] = updatedOriginalData;
+            sst_data.splice(originalIndexInMaster + 1, 0, newRowData); 
+        }
+
+        // Apply changes to the grid
+        sstGridOptions.api.applyTransaction({
+            add: [newRowData],
+            update: [updatedOriginalData]
+        });
+    };
+
+    const statusCellRenderer = (params) => {
+        if (params.value === 'Mới') {
+            const btn = document.createElement('button');
+            btn.innerHTML = 'Mới (Thêm)';
+            btn.className = 'add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500';
+            btn.dataset.nodeId = params.node.id;
+            return btn;
+        }
+        if (params.value === 'Lỗi') {
+            const btn = document.createElement('button');
+            const matchCount = params.data.matchCount;
+            let errorText = 'Lỗi';
+            let btnClass = 'bg-red-500 hover:bg-red-700'; // Default to red for error
+
+            if (typeof matchCount === 'number' && matchCount > 0) {
+                errorText = `Cảnh báo`;
+                if (matchCount > 1) {
+                    errorText = `Cảnh báo (${matchCount})`;
+                }
+                
+                btnClass = 'bg-amber-500 hover:bg-amber-600'; // Change to amber for warning
+
+            } else if (matchCount === 0) {
+                errorText = 'Lỗi';
+            }
+
+            btn.innerHTML = `${errorText} (Xóa?)`;
+            btn.className = `${btnClass} text-white text-xs font-bold py-1 px-2 rounded`;
+            btn.addEventListener('click', () => {
+                const rowId = params.node.data.ID;
+                sst_data = sst_data.filter(item => item.ID !== rowId);
+                sstGridOptions.api.applyTransaction({ remove: [params.node.data] });
+                const fromDate = picker.getStartDate();
+                const toDate = picker.getEndDate();
+
+                applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+            });
+            return btn;
+        }
+        if (params.value === 'Đã') {
+             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Đã</span>`;
+        }
+        if (params.value === 'Cũ') {
+             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Cũ</span>`;
+        }
+        return params.value || 'Chưa KT';
+    };
+
+    // --- 5. UI INITIALIZATION & EVENT LISTENERS ---
+    let initialColumnDefs = [
+        { headerName: "ID", field: "ID", width: 110, sortable: true, filter: true },
+        { headerName: "Giá đã cập nhật?", field: "updateStatus", width: 140, cellRenderer: statusCellRenderer },
+        { headerName: "Sản phẩm", field: "Sản phẩm", flex: 2, sortable: true, filter: true, wrapText: true, autoHeight: true },
+        { headerName: "Thương hiệu", field: "Thương hiệu", flex: 1, sortable: true, filter: true },
+        { 
+            headerName: "Giá niêm yết", 
+            field: "Giá niêm yết (VND)", 
+            width: 150, 
+            sortable: true, 
+            filter: 'agNumberColumnFilter',
+            valueGetter: p => parseNumericValue(p.data['Giá niêm yết (VND)']),
+            valueFormatter: p => {
+                const value = parseNumericValue(p.value);
+                return value !== null ? value.toLocaleString('vi-VN') + '₫' : 'N/A';
+            }
+        },
+        { headerName: "Ngày Thêm", field: "date", width: 120, sortable: true, filter: 'agDateColumnFilter' },
+        { 
+            headerName: "Phí Ship (VND)", 
+            field: "Phí ship (VND)", 
+            width: 150,
+            filter: 'agNumberColumnFilter',
+            valueGetter: p => parseNumericValue(p.data['Phí ship (VND)']),
+            valueFormatter: p => typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString('vi-VN') + '₫' : 'N/A')
+        },
+        { 
+            headerName: "Ngưỡng Freeship", 
+            field: "Ngưỡng Freeship (VND)", 
+            width: 160,
+            filter: 'agNumberColumnFilter',
+            valueGetter: p => parseNumericValue(p.data['Ngưỡng Freeship (VND)']),
+            valueFormatter: p => typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString('vi-VN') + '₫' : 'N/A')
+        },
+        { headerName: "Nguồn", field: "Nguồn", flex: 1, sortable: true, filter: true, hide: true },
+        { headerName: "Loại Cà phê", field: "Loại Cà phê", flex: 1, sortable: true, filter: true, wrapText: true, autoHeight: true, hide: true },
+        { headerName: "Đơn vị tính", field: "Đơn vị tính", width: 120, sortable: true, filter: true, hide: true },
+        { headerName: "Tại Địa Phương", field: "Tại Địa Phương", flex: 1, sortable: true, filter: true, hide: true },
+        { headerName: "Link", field: "Link Mô tả", cellRenderer: p => p.value ? `<a href="${p.value}" target="_blank" class="text-blue-600 hover:underline">Xem</a>` : '', width: 80 },
+        { headerName: "HTML Selector", field: "HTML", flex: 2, wrapText: true, autoHeight: true, hide: true },
+    ];
+    
+    sstGridOptions = {
+        columnDefs: initialColumnDefs,
+        defaultColDef: { resizable: true, sortable: true, filter: true },
+        getRowId: params => params.data.ID,
+        onFilterChanged: updateChartsFromGridData,
+        onSortChanged: updateChartsFromGridData,
+        onGridReady: (params) => {
+            // Now the API is ready
+            updateChartsFromGridData();
+        }
+    };
+    
+    const sstGridDiv = document.querySelector('#sstGrid');
+    new agGrid.Grid(sstGridDiv, sstGridOptions);
+
+    const picker = new Litepicker({
+        element: document.getElementById('datepicker'),
+        singleMode: false,
+        format: 'YYYY-MM-DD',
+        setup: (p) => {
+            p.on('selected', (d1, d2) => {
+                applyAllFilters(d1.dateInstance, d2.dateInstance);
+            });
+        },
+    });
+
+    const chatInput = document.getElementById('chat-input');
+    const chatSubmit = document.getElementById('chat-submit');
+    const promptButtons = document.querySelectorAll('.prompt-btn');
+    promptButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            chatInput.value = button.textContent;
+            handleChatSubmit();
+        });
+    });
+    chatSubmit.addEventListener('click', handleChatSubmit);
+    chatInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleChatSubmit();
+    });
+    
+    const tabs = document.querySelectorAll('.tab-btn');
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+             tabs.forEach(t => t.classList.remove('active'));
+             tab.classList.add('active');
+             const target = tab.getAttribute('data-tab');
+             tabContents.forEach(content => {
+                 content.classList.remove('active');
+                 if (content.id === target) content.classList.add('active');
+             });
+             
+             if(target === 'aiAnalysisTab' && !geminiApiKey) {
+                document.getElementById('api-key-modal').classList.remove('hidden');
+             }
+
+            updateChartsFromGridData();
+        });
+    });
+    
+    document.getElementById('check-price-btn').addEventListener('click', () => {
+        if (taskQueue.length > 0) {
+            alert('Một quá trình kiểm tra đang được thực hiện. Vui lòng đợi.');
+            return;
+        }
+        sstGridOptions.api.forEachNodeAfterFilterAndSort(node => {
+            if (node.data.updateStatus !== 'Cũ'){
+                taskQueue.push({
+                    id: node.data.ID,
+                    name: node.data['Sản phẩm'],
+                    url: node.data['Link Mô tả'],
+                    selector: node.data.HTML,
+                    originalPrice: node.data['Giá niêm yết (VND)']
+                });
+            }
+            
+        });
+        renderTaskQueue();
+        processQueue();
+    });
+
+    sstGridDiv.addEventListener('click', (event) => {
+        if (event.target.matches('.add-new-version-btn')) {
+            const nodeId = event.target.dataset.nodeId;
+            const node = sstGridOptions.api.getRowNode(nodeId);
+            if (node) {
+                createNewVersion(node);
+                updateAddAllButtonVisibility();
+            }
+        }
+    });
+    
+    document.getElementById('add-all-btn').addEventListener('click', () => {
+        const nodesToUpdate = [];
+        sstGridOptions.api.forEachNode(node => {
+            if(node.data.updateStatus === 'Mới') {
+                nodesToUpdate.push(node);
+            }
+        });
+        for(let i = nodesToUpdate.length - 1; i >= 0; i--) {
+            createNewVersion(nodesToUpdate[i]);
+        }
+        updateAddAllButtonVisibility();
+    });
+
+    const addDataBtn = document.getElementById('add-data-btn');
+    const csvFileInput = document.getElementById('csv-file-input');
+
+    addDataBtn.addEventListener('click', () => {
+        csvFileInput.click();
+    });
+
+    csvFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const text = e.target.result;
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                alert('Tệp CSV không hợp lệ hoặc trống.');
+                csvFileInput.value = '';
+                return;
+            }
+
+            const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
+            
+            // --- FIX STARTS HERE ---
+            const existingIds = new Set(sst_data.map(item => item.ID));
+            let idCounter = 0;
+
+            const newSstEntries = lines.map(line => {
+                const values = parseCsvLine(line);
+                if (values.length !== header.length) {
+                    console.warn('Skipping malformed CSV line:', line);
+                    return null;
+                }
+                const rowData = {};
+                header.forEach((colName, index) => {
+                    rowData[colName] = values[index] ? values[index].replace(/"/g, '').trim() : null;
+                });
+                
+                let finalId = rowData['ID'];
+                if (!finalId || finalId.trim() === '') {
+                    while (true) {
+                        const nextId = `ID${String(idCounter).padStart(3, '0')}`;
+                        if (!existingIds.has(nextId)) {
+                            finalId = nextId;
+                            existingIds.add(finalId); // Thêm ID mới vào bộ đệm ngay lập tức
+                            break;
+                        }
+                        idCounter++;
+                    }
+                }
+
+                const parsedDate = parseDateString(rowData['Ngày Thêm']);
+
+                return {
+                    "ID": finalId,
+                    "Sản phẩm": rowData['Sản phẩm'] || 'Không có tên',
+                    "Thương hiệu": rowData['Thương hiệu'] || 'Không rõ',
+                    "Nguồn": rowData['Nguồn'] || '',
+                    "Link Mô tả": rowData['Link Mô tả'] || '',
+                    "Loại Cà phê": rowData['Loại Cà phê'] || 'Không rõ',
+                    "Đơn vị tính": rowData['Đơn vị tính'] || '',
+                    "Giá niêm yết (VND)": rowData['Giá niêm yết (VND)'],
+                    "Phí ship (VND)": rowData['Phí ship (VND)'],
+                    "Ngưỡng Freeship (VND)": rowData['Ngưỡng Freeship (VND)'],
+                    "Tại Địa Phương": rowData['Tại Địa Phương'] || 'Toàn quốc',
+                    "HTML": rowData['HTML'] || '',
+                    "date": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
+                    "updateStatus": rowData['updateStatus'] === 'Cũ' ? 'Cũ' : 'Đã',
+                    "Nền tảng TMĐT": rowData['Nền tảng TMĐT'] || 'Không rõ'
+                };
+            }).filter(entry => entry !== null);
+            // --- FIX ENDS HERE ---
+
+            if (newSstEntries.length === 0) {
+                alert('Không có dữ liệu hợp lệ trong tệp để thêm.');
+                csvFileInput.value = '';
+                return;
+            }
+
+            sst_data.push(...newSstEntries);
+            currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
+            if (sstGridOptions && sstGridOptions.api) {
+                sstGridOptions.api.setRowData(currentFilteredData);
+            }
+            
+            if (sst_data.length > 0) {
+                const allDates = sst_data
+                    .map(item => parseDateString(item.date))
+                    .filter(d => d !== null && !isNaN(d.getTime()));
+
+                if (allDates.length > 0) {
+                    const allTimestamps = allDates.map(d => d.getTime());
+                    const minDate = new Date(Math.min.apply(null, allTimestamps));
+                    const maxDate = new Date(Math.max.apply(null, allTimestamps));
+                    picker.setDateRange(minDate, maxDate);
+                } else {
+                    picker.clearSelection();
+                    applyAllFilters(null, null);
+                }
+            } else {
+                const fromDate = picker.getStartDate();
+                const toDate = picker.getEndDate();
+                applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+            }
+
+            alert(`${newSstEntries.length} hàng đã được thêm thành công.`);
+        };
+        reader.readAsText(file, 'UTF-8');
+        event.target.value = '';
+    });
+    
+    document.getElementById('toggle-queue-btn').addEventListener('click', () => {
+        document.getElementById('task-queue-body').classList.toggle('hidden');
+        document.querySelector('#toggle-queue-btn svg').classList.toggle('rotate-180');
+        adjustTaskQueuePosition(document.getElementById('toggle-queue-btn'));
+    });
+    
+    document.getElementById('clear-pending-tasks-btn').addEventListener('click', () => {
+        if (taskQueue.length > 1) {
+            const runningTask = taskQueue[0];
+            taskQueue = [runningTask];
+            renderTaskQueue();
+            processQueue();
+        }
+    });
+
+    document.getElementById('to-csv-btn').addEventListener('click', () => {
+        let currentFilteredData = [];
+        sstGridOptions.api.forEachNodeAfterFilterAndSort(node => {
+            currentFilteredData.push(node.data);
+        });
+      if (!currentFilteredData || currentFilteredData.length === 0) {
+        alert("Không có dữ liệu để xuất.");
+        return;
+      }
+
+      const csvHeaders = [
+          "ID", "Sản phẩm", "Thương hiệu", "Nguồn", "Link Mô tả", "Loại Cà phê", 
+          "Đơn vị tính", "Giá niêm yết (VND)", "Phí ship (VND)", "Ngưỡng Freeship (VND)", 
+          "Tại Địa Phương", "HTML", "Ngày Thêm", "updateStatus", "Nền tảng TMĐT"
+      ];
+
+      const dataForCsv = currentFilteredData.map(row => ({
+          "ID": row.ID,
+          "Sản phẩm": row["Sản phẩm"],
+          "Thương hiệu": row["Thương hiệu"],
+          "Nguồn": row.Nguồn,
+          "Link Mô tả": row["Link Mô tả"],
+          "Loại Cà phê": row["Loại Cà phê"],
+          "Đơn vị tính": row["Đơn vị tính"],
+          "Giá niêm yết (VND)": row["Giá niêm yết (VND)"],
+          "Phí ship (VND)": row["Phí ship (VND)"],
+          "Ngưỡng Freeship (VND)": row["Ngưỡng Freeship (VND)"],
+          "Tại Địa Phương": row["Tại Địa Phương"],
+          "HTML": row.HTML,
+          "Ngày Thêm": row.date,
+          "updateStatus": row.updateStatus,
+          "Nền tảng TMĐT": row["Nền tảng TMĐT"]
+      }));
+
+      const csvContent = [
+        csvHeaders.join(','),
+        ...dataForCsv.map(row =>
+          csvHeaders.map(header => {
+            let val = (row[header] ?? '').toString();
+            if (val.includes(',')) {
+                val = `"${val.replace(/"/g, '""')}"`;
+            }
+            return val;
+          }).join(',')
+        )
+      ].join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'du_lieu_sst.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    const helpModal = document.getElementById('help-modal');
+    const helpBtn = document.getElementById('help-btn');
+    const closeHelpBtn = document.getElementById('close-help-btn');
+
+    // Mở modal khi nhấn nút Trợ giúp
+    helpBtn.addEventListener('click', () => {
+        helpModal.classList.remove('hidden');
+    });
+
+    // Đóng modal khi nhấn nút 'X'
+    closeHelpBtn.addEventListener('click', () => {
+        helpModal.classList.add('hidden');
+    });
+
+    // Đóng modal khi nhấn vào lớp phủ bên ngoài
+    helpModal.addEventListener('click', (event) => {
+        // Chỉ đóng nếu người dùng nhấn trực tiếp vào lớp phủ màu đen
+        if (event.target === helpModal) {
+            helpModal.classList.add('hidden');
+        }
+    });
+
+    const settingsModal = document.getElementById('settings-modal');
+    document.getElementById('settings-btn').addEventListener('click', () => {
+        const list = document.getElementById('settings-list');
+        list.innerHTML = ''; // Clear previous items
+        
+        const allColumns = sstGridOptions.api.getColumns();
+        if (!allColumns) return; // Grid API not ready yet
+
+        allColumns.forEach(col => {
+            const colDef = col.getColDef();
+            const key = colDef.field;
+            const headerName = colDef.headerName;
+            
+            const controlRow = document.createElement('div');
+            controlRow.className = 'flex items-center justify-between p-1 rounded hover:bg-gray-100';
+
+            const label = document.createElement('label');
+            label.className = 'flex items-center space-x-2 cursor-pointer flex-grow';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = key;
+            checkbox.checked = deduplicationKeys.includes(key);
+            checkbox.className = 'form-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500';
+            
+            const span = document.createElement('span');
+            span.textContent = headerName;
+            
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            
+            const visibilityBtn = document.createElement('button');
+            visibilityBtn.className = 'p-1 rounded-full hover:bg-gray-200';
+            visibilityBtn.dataset.colId = col.getColId();
+            const isVisible = col.isVisible();
+            visibilityBtn.innerHTML = isVisible 
+                ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>` 
+                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>`;
+            
+            visibilityBtn.addEventListener('click', (e) => {
+                const btn = e.currentTarget;
+                const isCurrentlyVisible = btn.dataset.visible === 'true';
+                btn.dataset.visible = !isCurrentlyVisible;
+                btn.innerHTML = !isCurrentlyVisible
+                    ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>` 
+                    : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>`;
+            });
+            visibilityBtn.dataset.visible = isVisible;
+
+            controlRow.appendChild(visibilityBtn);
+            controlRow.appendChild(label);
+            list.appendChild(controlRow);
+        });
+        settingsModal.classList.remove('hidden');
+    });
+
+    document.getElementById('cancel-settings-btn').addEventListener('click', () => {
+        document.getElementById('settings-modal').classList.add('hidden');
+    });
+
+    document.getElementById('apply-settings-btn').addEventListener('click', () => {
+        const list = document.getElementById('settings-list');
+        const newKeys = [];
+        const visibilityState = {};
+
+        list.querySelectorAll('label').forEach(label => {
+            const checkbox = label.querySelector('input[type="checkbox"]');
+            const key = checkbox.value;
+            if (checkbox.checked) {
+                newKeys.push(key);
+            }
+        });
+        
+        list.querySelectorAll('button').forEach(btn => {
+            const colId = btn.dataset.colId;
+            const isVisible = btn.dataset.visible === 'true';
+            visibilityState[colId] = isVisible;
+        });
+
+        deduplicationKeys = newKeys;
+        const colIds = Object.keys(visibilityState);
+        const colsToShow = colIds.filter(id => visibilityState[id]);
+        const colsToHide = colIds.filter(id => !visibilityState[id]);
+        sstGridOptions.api.setColumnsVisible(colsToHide, false);
+        sstGridOptions.api.setColumnsVisible(colsToShow, true);
+        
+
+        applyAllFilters();
+        document.getElementById('settings-modal').classList.add('hidden');
+    });
+
+    const apiKeyModal = document.getElementById('api-key-modal');
+    document.getElementById('save-api-key-btn').addEventListener('click', () => {
+        const keyInput = document.getElementById('gemini-api-key-input');
+        const key = keyInput.value.trim();
+        if (key) {
+            geminiApiKey = key;
+            sessionStorage.setItem('geminiApiKey', key);
+            apiKeyModal.classList.add('hidden');
+            handleChatSubmit(); // Automatically submit after saving key
+        } else {
+            alert('Vui lòng nhập một API Key hợp lệ.');
+        }
+    });
+    document.getElementById('cancel-api-key-btn').addEventListener('click', () => {
+        apiKeyModal.classList.add('hidden');
+    });
+
+    defaultShipFeeInput = document.getElementById('input-default-ship-fee');
+
+    defaultShipFeeInput.addEventListener('change', () => {
+        updateChartsFromGridData();
+    });
+
+    defaultShipFeeInput.addEventListener('blur', () => {
+        // Nếu giá trị sau khi cắt bỏ khoảng trắng là rỗng...
+        if (defaultShipFeeInput.value.trim() === '') {
+            // ...thì đặt lại giá trị là 30000
+            defaultShipFeeInput.value = 30000;
+
+            // Kích hoạt sự kiện 'input' một cách nhân tạo để biểu đồ cập nhật theo giá trị mới
+            defaultShipFeeInput.dispatchEvent(new Event('input'));
+        }
+    });
+
+    // Lấy các phần tử từ DOM
+    const taskQueueContainer = document.getElementById('task-queue-container');
+    const taskQueueHeader = document.getElementById('task-queue-header');
+
+    // Kích hoạt chức năng kéo-thả
+    makeDraggable(taskQueueContainer, taskQueueHeader);
+
+
+    // --- 6. INITIAL LOAD ---
+    const endDate = new Date('2025-07-06');
+    const startDate = new Date('2025-05-23');
+    picker.setDateRange(startDate, endDate);
+});
+</script>
+
+</body>
+</html>

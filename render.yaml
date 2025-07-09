@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: selenium-scraper-backend
+    env: python
+    plan: free # Hoặc 'starter' nếu bạn cần thêm tài nguyên
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn --worker-class gevent --timeout 120 --bind 0.0.0.0:$PORT app:app"
+    buildFilter:
+      paths:
+      - "app.py"
+      - "requirements.txt"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.4
+      - key: PORT
+        value: 10000
+    # Thêm buildpack của Google Chrome để tự động cài đặt trình duyệt
+    buildpacks:
+      - url: https://github.com/heroku/heroku-buildpack-google-chrome
