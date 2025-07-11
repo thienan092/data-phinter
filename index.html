@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Phân Tích Động Thị Trường Cà Phê</title>
+    <title data-lang-key="page_title">Hệ Thống Phân Tích Động Thị Trường Cà Phê</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/ag-grid-community@31.3.2/dist/ag-grid-community.min.js"></script>
@@ -15,6 +15,8 @@
             --tab-height: 50px;
         }
         html, body {
+            max-width: 100vw;
+            overflow-x: hidden;
             height: 100%;
             overflow: hidden;
         }
@@ -25,6 +27,8 @@
             flex-direction: column;
         }
        .main-container {
+            overflow-y: auto;
+            height: 100%;
             flex-grow: 1;
             display: flex;
             flex-direction: column;
@@ -34,7 +38,7 @@
             display: none;
             overflow-y: auto;
             flex-grow: 1;
-            padding: 1.5rem;
+            padding: 1rem; /* Adjusted padding for mobile */
         }
        .tab-content.active {
             display: flex;
@@ -46,23 +50,62 @@
             background-color: #eff6ff;
         }
        .ag-theme-alpine {
+            min-height: 400px;
+            max-height: calc(100vh - 250px);
+            overflow: auto;
             height: 100%;
             width: 100%;
             flex-grow: 1;
+            /* Ensure rows are not too wide on desktop */
+            --ag-row-height: 38px; /* Default row height, adjust as needed */
+            --ag-header-height: 40px; /* Default header height */
         }
-       .chart-container {
+        /* Adjust cell padding for better density on desktop */
+        .ag-cell {
+            padding: 4px 8px !important; /* Smaller padding */
+            word-break: break-word !important;
+        }
+        .ag-header-cell-text {
+            white-space: normal !important;
+        }
+
+       #logisticsTab {
+            padding: 0.5rem !important; /* Giảm khoảng trắng cho mobile */
+        }
+
+        /* Điều chỉnh box nhập phí ship */
+        #logisticsTab .bg-white {
+            padding: 0.5rem !important; /* Ít padding hơn trên mobile */
+        }
+
+        /* Tối ưu bố cục chart */
+        .chart-container {
             background: white;
-            padding: 1.5rem;
+            padding: 0.5rem; /* ít padding hơn cho mobile */
             border-radius: 0.5rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            min-height: 450px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            min-height: 300px; /* Minimum height for charts */
+            flex-grow: 1; /* Re-added to allow charts to grow within flex container */
             display: flex;
             flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
         }
+
+        /* Tối ưu biểu đồ hiển thị trên mọi thiết bị */
         .chart-container canvas {
-            flex-grow: 1;
-            max-height: 400px;
+            width: 100% !important;
+            height: 100% !important; /* Fill parent container */
+            max-height: 100%;
+            object-fit: contain;
         }
+
+        /* Responsive grid spacing nhỏ hơn cho mobile */
+        #logisticsTab .grid {
+            gap: 0.75rem !important;
+        }
+        
         #chat-container {
             display: flex;
             flex-direction: column;
@@ -81,11 +124,11 @@
             background-color: #ffffff;
         }
        .message {
-            margin-bottom: 1rem;
-            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem; /* Adjusted margin for mobile */
+            padding: 0.5rem 0.75rem; /* Adjusted padding for mobile */
             border-radius: 0.5rem;
-            max-width: 85%;
-            line-height: 1.5;
+            max-width: 90%; /* Adjusted max-width for mobile */
+            line-height: 1.4; /* Adjusted line-height for mobile */
             white-space: pre-wrap; /* To respect newlines from AI */
         }
        .user-message {
@@ -102,14 +145,13 @@
             color: #6b7280;
             font-style: italic;
         }
-       .ag-cell {
-            word-break: break-word !important;
-        }
+       
         #task-queue-container {
             position: fixed;
-            bottom: 1rem;
-            right: 1rem;
-            width: 350px;
+            bottom: 0.5rem; /* Adjusted for mobile */
+            right: 0.5rem; /* Adjusted for mobile */
+            width: 95%; /* Adjusted for mobile */
+            max-width: 350px; /* Max width for larger screens */
             max-height: 400px;
             background-color: white;
             border-radius: 0.5rem;
@@ -151,64 +193,93 @@
         }
         .modal-content {
             background-color: white;
-            padding: 2rem;
+            padding: 1.5rem; /* Adjusted padding for mobile */
             border-radius: 0.5rem;
-            max-width: 500px;
+            max-width: 95%; /* Adjusted for mobile */
             width: 90%;
         }
+
+        /* Resizing handles for charts */
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            z-index: 10;
+        }
+        /* Only bottom-right handle is active */
+        .resize-handle.top-left,
+        .resize-handle.top-right,
+        .resize-handle.bottom-left {
+            display: none; /* Hide other handles */
+        }
+        .resize-handle.bottom-right { bottom: -5px; right: -5px; cursor: nwse-resize; }
     </style>
 </head>
 <body class="text-gray-800">
 
-<div class="p-4 bg-white shadow-md z-20">
-    <div class="flex flex-wrap justify-between items-center">
-        <h1 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2 md:mb-0">Phân Tích Thị Trường Cà Phê
-        <button id="help-btn" class="ml-3 text-gray-400 hover:text-blue-600 transition-colors duration-200" title="Hướng dẫn sử dụng">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-        </button>
-        </h1>
-        <div>
-            <label for="datepicker" class="text-sm font-medium text-gray-700 mr-2">Bộ lọc Thời gian:</label>
-            <input id="datepicker" class="border border-gray-300 rounded-md px-3 py-2 text-sm w-64"/>
+<div class="p-3 bg-white shadow-md z-20"> <!-- Adjusted padding for mobile -->
+    <div class="mb-3 flex flex-col md:flex-row justify-between items-center"> <!-- Adjusted margin and flex direction for mobile -->
+        <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto mb-2 md:mb-0">
+            <h1 class="text-xl md:text-3xl font-bold text-gray-800 text-center md:text-left" data-lang-key="main_title">Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu "Tìm Kiếm Sâu" (phiên bản dành cho Kệ Hàng Cà Phê Trực Tuyến)</h1>
+            <button id="help-btn" class="ml-0 md:ml-3 text-gray-400 hover:text-blue-600 transition-colors duration-200" data-lang-key-title="user_guide_title">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto md:mx-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+        </div>
+        <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
+            <div class="w-full md:w-auto">
+                <label for="datepicker" class="text-sm font-medium text-gray-700 mr-2 block md:inline-block" data-lang-key="time_filter_label">Bộ lọc Thời gian:</label>
+                <input id="datepicker" class="border border-gray-300 rounded-md px-3 py-2 text-sm w-full md:w-64"/>
+            </div>
+            <div class="relative w-full md:w-auto">
+                <select id="language-switcher" class="border border-gray-300 rounded-md px-3 py-2 text-sm appearance-none pr-8 cursor-pointer w-full">
+                    <option value="en">English</option>
+                    <option value="vn">Tiếng Việt</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<div class="px-6 bg-white/80 backdrop-blur-sm z-20">
+<div class="px-3 bg-white/80 backdrop-blur-sm z-20"> <!-- Adjusted padding for mobile -->
     <div class="border-b border-gray-200">
-        <nav class="-mb-px flex space-x-6 overflow-x-auto" id="tab-container">
-            <button class="tab-btn active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="sstTab">Dữ Liệu SST</button>
-            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="marketOverviewTab">Tổng quan Thị trường</button>
-            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="competitiveAnalysisTab">Phân tích Cạnh tranh</button>
-            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="logisticsTab">Vận hành Logistics</button>
-            <button class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="aiAnalysisTab">Phân tích AI</button>
+        <nav class="-mb-px flex space-x-3 overflow-x-auto" id="tab-container"> <!-- Adjusted space-x for mobile -->
+            <button class="tab-btn active whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm" data-tab="sstTab" data-lang-key="sst_data_tab">Dữ Liệu SST</button>
+            <button class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="marketOverviewTab" data-lang-key="market_overview_tab">Tổng quan Thị trường</button>
+            <button class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="competitiveAnalysisTab" data-lang-key="competitive_analysis_tab">Phân tích Cạnh tranh</button>
+            <button class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="logisticsTab" data-lang-key="logistics_tab">Vận hành Logistics</button>
+            <button class="tab-btn whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="aiAnalysisTab" data-lang-key="ai_analysis_tab">Phân tích AI</button>
         </nav>
     </div>
 </div>
 
 <main class="main-container">
     <div id="sstTab" class="tab-content active">
-        <div class="mb-4 flex flex-wrap justify-between items-center">
-            <div class="flex space-x-2">
-                <button id="add-data-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+        <div class="mb-3 flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0"> <!-- Adjusted margin and flex direction for mobile -->
+            <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
+                <button id="add-data-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key="add_data_btn">
                     Thêm dữ liệu
                 </button>
-                <button id="to-csv-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                <button id="to-csv-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key="export_csv_btn">
                     📤 Tạo file CSV
                 </button>
                 <input type="file" id="csv-file-input" class="hidden" accept=".csv">
             </div>
-            <div class="flex space-x-2">
-                <button id="add-all-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 hidden">
+            <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
+                <button id="add-all-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 hidden w-full md:w-auto" data-lang-key="add_all_changes_btn">
                     Thêm tất cả thay đổi
                 </button>
-                <button id="check-price-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                <button id="check-price-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed w-full md:w-auto" data-lang-key="check_price_updates_btn">
                     Kiểm tra cập nhật giá
                 </button>
-                 <button id="settings-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold p-2 rounded-lg shadow-md transition duration-300" title="Thiết lập Hiển thị & Khóa">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                 <button id="settings-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold p-2 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key-title="settings_btn_title">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                 </button>
             </div>
         </div>
@@ -216,61 +287,67 @@
     </div>
 
     <div id="marketOverviewTab" class="tab-content">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 w-full">
-            <div class="chart-container lg:col-span-2">
-                <h3 class="text-lg font-semibold mb-4 text-center">Định vị Giá Trung bình theo Thương hiệu (VND/kg)</h3>
+        <div class="flex flex-col lg:flex-row lg:flex-wrap gap-4 w-full h-full">
+            <div class="chart-container w-full h-full lg:w-[calc(66.66%-0.5rem)]" data-chart-id="brandPriceChart"> <!-- Adjusted width for desktop -->
+                <h3 class="text-lg font-semibold mb-3 text-center" data-lang-key="avg_price_chart_title">Định vị Giá Trung bình theo Thương hiệu (VND/kg)</h3>
                 <canvas id="brandPriceChart"></canvas>
+                <div class="resize-handle bottom-right"></div>
             </div>
-            <div class="chart-container">
-                <h3 class="text-lg font-semibold mb-4 text-center">Phân bổ Chủng loại Cà phê</h3>
+            <div class="chart-container w-full h-full lg:w-[calc(33.33%-0.5rem)]" data-chart-id="coffeeTypeChart"> <!-- Adjusted width for desktop -->
+                <h3 class="text-lg font-semibold mb-3 text-center" data-lang-key="coffee_type_chart_title">Phân bổ Chủng loại Cà phê</h3>
                 <canvas id="coffeeTypeChart"></canvas>
+                <div class="resize-handle bottom-right"></div>
             </div>
         </div>
     </div>
 
     <div id="competitiveAnalysisTab" class="tab-content">
-        <div class="grid grid-cols-1 gap-6 w-full">
-            <div class="chart-container">
-                <h3 class="text-lg font-semibold mb-4 text-center">Bản đồ Định vị Thương hiệu</h3>
+        <div class="flex flex-col gap-4 w-full h-full">
+            <div class="chart-container w-full" data-chart-id="brandPositioningChart">
+                <h3 class="text-lg font-semibold mb-3 text-center" data-lang-key="brand_map_chart_title">Bản đồ Định vị Thương hiệu</h3>
                 <canvas id="brandPositioningChart"></canvas>
+                <div class="resize-handle bottom-right"></div>
             </div>
         </div>
     </div>
 
     <div id="logisticsTab" class="tab-content">
-        <div class="mb-4 p-4 bg-white rounded-lg shadow">
-            <label for="input-default-ship-fee" class="text-sm font-medium text-gray-700 mr-2">Phí ship mặc định (VND):</label>
-            <input type="number" id="input-default-ship-fee" value="30000" step="1000" class="p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        <div class="mb-3 p-2 sm:p-3 bg-white rounded-lg shadow">
+            <label for="input-default-ship-fee" class="text-sm font-medium text-gray-700 mr-2 block mb-1" data-lang-key="default_shipping_fee_label">Phí ship mặc định (VND):</label>
+            <input type="number" id="input-default-ship-fee" value="30000" step="1000" class="p-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm w-full">
         </div>
-        <div class="grid grid-cols-1 gap-6 w-full">
-             <div class="chart-container">
-                <h3 class="text-lg font-semibold mb-4 text-center">Phân tích Hiệu quả Ngưỡng Freeship</h3>
+        <div class="flex flex-col gap-4 w-full h-full">
+            <div class="chart-container w-full h-full p-2 sm:p-4" data-chart-id="freeshipChart">
+                <h3 class="text-lg font-semibold mb-3 text-center" data-lang-key="freeship_chart_title">Phân tích Hiệu quả Ngưỡng Freeship</h3>
                 <canvas id="freeshipChart"></canvas>
+                <div class="resize-handle bottom-right"></div>
             </div>
         </div>
     </div>
 
     <div id="aiAnalysisTab" class="tab-content">
         <div id="chat-container">
-            <div id="chat-messages" class="mb-4 flex flex-col space-y-4">
-                 <div class="message bot-message">
+            <div id="chat-messages" class="mb-3 flex flex-col space-y-3">
+                 <div class="message bot-message" data-lang-key="ai_welcome_message">
                     <strong>Xin chào!</strong> Tôi là trợ lý phân tích chiến lược. Hãy đặt câu hỏi về thị trường cà phê dựa trên dữ liệu đang hiển thị, hoặc chọn một gợi ý bên dưới để bắt đầu.
                 </div>
             </div>
-            <div class="p-4 border-t border-gray-200">
-                <p class="text-sm font-medium text-gray-600 mb-2">Gợi ý phân tích:</p>
+            <div class="p-3 border-t border-gray-200">
+                <p class="text-sm font-medium text-gray-600 mb-2" data-lang-key="ai_suggestions_label">Gợi ý phân tích:</p>
                 <div class="flex flex-wrap gap-2">
-                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full">Phân khúc thị trường đang có những đặc điểm gì?</button>
-                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full">So sánh chiến lược logistics của các thương hiệu.</button>
-                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full">Yếu tố nào quan trọng nhất với khách hàng cao cấp?</button>
+                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full" data-lang-key="ai_prompt_1">Phân khúc thị trường đang có những đặc điểm gì?</button>
+                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full" data-lang-key="ai_prompt_2">So sánh chiến lược logistics của các thương hiệu.</button>
+                    <button class="prompt-btn bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium py-1 px-3 rounded-full" data-lang-key="ai_prompt_3">Yếu tố nào quan trọng nhất với khách hàng cao cấp?</button>
                 </div>
-                <div class="flex mt-4">
-                    <input type="text" id="chat-input" class="flex-grow border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Nhập câu hỏi của bạn...">
-                    <button id="chat-submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-r-md hover:bg-blue-700">Gửi</button>
+                <div class="flex mt-3">
+                    <input type="text" id="chat-input" class="flex-grow border border-gray-300 rounded-l-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"  data-lang-key-placeholder="ai_input_placeholder">
+                    <button id="chat-submit" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-r-md hover:bg-blue-700" data-lang-key="ai_send_button">Gửi</button>
                 </div>
             </div>
         </div>
     </div>
+
+    
 </main>
 
 <div id="task-queue-container" class="hidden">
@@ -279,9 +356,9 @@
             <button id="toggle-queue-btn" class="text-white">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
             </button>
-            <span>Hàng đợi tác vụ (<span id="task-count">0</span>)</span>
+            <span data-lang-key="task_queue_title">Hàng đợi tác vụ (<span id="task-count">0</span>)</span>
         </div>
-        <button id="clear-pending-tasks-btn" class="text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded">Làm Trống</button>
+        <button id="clear-pending-tasks-btn" class="text-xs bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded" data-lang-key="task_queue_clear_btn">Làm Trống</button>
     </div>
     <div id="task-queue-body" class="p-3 space-y-3 overflow-y-auto">
     </div>
@@ -289,29 +366,29 @@
 
 <div id="settings-modal" class="modal-overlay hidden">
     <div class="modal-content">
-        <h2 class="text-xl font-bold mb-4">Thiết lập Hiển thị & Khóa</h2>
-        <p class="text-sm text-gray-600 mb-4">Tùy chỉnh các cột được hiển thị và các cột được sử dụng làm khóa chống trùng lặp.</p>
+        <h2 class="text-xl font-bold mb-4" data-lang-key="settings_modal_title">Thiết lập Hiển thị & Khóa</h2>
+        <p class="text-sm text-gray-600 mb-4" data-lang-key="settings_modal_desc">Tùy chỉnh các cột được hiển thị và các cột được sử dụng làm khóa chống trùng lặp.</p>
         <div id="settings-list" class="space-y-2 mb-6 max-h-64 overflow-y-auto">
             <!-- Settings will be inserted here by JS -->
         </div>
         <div class="flex justify-end space-x-3">
-            <button id="cancel-settings-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Hủy</button>
-            <button id="apply-settings-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Áp dụng</button>
+            <button id="cancel-settings-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" data-lang-key="settings_modal_cancel_btn">Hủy</button>
+            <button id="apply-settings-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" data-lang-key="settings_modal_apply_btn">Áp dụng</button>
         </div>
     </div>
 </div>
 
 <div id="api-key-modal" class="modal-overlay hidden">
     <div class="modal-content">
-        <h2 class="text-xl font-bold mb-4">Thiết lập Gemini API Key</h2>
-        <p class="text-sm text-gray-600 mb-4">Vui lòng cung cấp khóa API Gemini của bạn để sử dụng chức năng phân tích AI. Khóa sẽ được lưu trữ trong phiên làm việc của trình duyệt.</p>
+        <h2 class="text-xl font-bold mb-4" data-lang-key="api_key_modal_title">Thiết lập Gemini API Key</h2>
+        <p class="text-sm text-gray-600 mb-4"data-lang-key="api_key_modal_desc">Vui lòng cung cấp khóa API Gemini của bạn để sử dụng chức năng phân tích AI. Khóa sẽ được lưu trữ trong phiên làm việc của trình duyệt.</p>
         <div>
-            <label for="gemini-api-key-input" class="block text-sm font-medium text-gray-700">Gemini API Key</label>
+            <label for="gemini-api-key-input" class="block text-sm font-medium text-gray-700" data-lang-key="api_key_modal_label">Gemini API Key</label>
             <input type="password" id="gemini-api-key-input" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
         </div>
         <div class="flex justify-end space-x-3 mt-6">
-            <button id="cancel-api-key-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Hủy</button>
-            <button id="save-api-key-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Lưu</button>
+            <button id="cancel-api-key-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300" data-lang-key="api_key_modal_cancel_btn">Hủy</button>
+            <button id="save-api-key-btn" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700" data-lang-key="api_key_modal_save_btn">Lưu</button>
         </div>
     </div>
 </div>
@@ -324,33 +401,36 @@
             </svg>
         </button>
         
-        <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2">Hướng dẫn Sử dụng</h2>
+        <h2 class="text-2xl font-bold mb-4 text-gray-800 border-b pb-2" data-lang-key="help_modal_title">Hướng dẫn Sử dụng</h2>
         
-        <div class="text-sm text-gray-700 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-            <p>Hệ thống phân tích động cho thị trường cà phê bán lẻ (bản portable).</p>
-            
+        <div id="help-modal-body" class="text-sm text-gray-700 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+            <p data-lang-key="help_intro1">Ứng dụng được thiết kế nhằm tích hợp những chức năng cơ bản nhất để người sử dụng phổ thông có thể chuẩn hóa và tích lũy "dữ liệu tìm kiếm sâu" (dữ liệu có được thông qua chức năng <a href="https://gemini.google/overview/deep-research/?hl=vn">Deep Research</a> của mô hình ngôn ngữ lớn Gemini) theo thời gian</p>
+            <p data-lang-key="help_intro2"><strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến</p>
+            <p data-lang-key="help_intro3"><strong>Số phiên bản:</strong> v1.0+bs4</p>
+            <p data-lang-key="help_intro4"><strong>Đối tượng:</strong> Thị Trường Cà Phê Bán Lẻ</p>
+
             <div>
-                <h3 class="text-lg font-semibold mb-2 text-gray-900">Các Thành phần Chính</h3>
+                <h3 class="text-lg font-semibold mb-2 text-gray-900" data-lang-key="help_key_components_title">Key Components</h3>
                 <ul class="list-disc list-inside space-y-2 pl-2">
-                    <li><strong>Lọc theo Thời gian:</strong> Cho phép bạn chọn một khoảng thời gian để phân tích. Toàn bộ dữ liệu và biểu đồ trên trang sẽ được cập nhật theo lựa chọn của bạn.</li>
-                    <li><strong>Các Tab Điều hướng:</strong>
+                    <li data-lang-key="help_key_components_1"><strong>Time Filter:</strong> Allows you to select a time range for analysis. All data and charts on the page will update based on your selection.</li>
+                    <li><strong data-lang-key="help_key_components_2_title">Navigation Tabs:</strong>
                         <ul class="list-disc list-inside ml-5 mt-1 space-y-1">
-                            <li><strong>Dữ liệu SST:</strong> Nơi hiển thị Nguồn Chân Lý Duy Nhất (Single Source of Truth). Đây là trung tâm quản lý dữ liệu của bạn và tất cả các phân tích sẽ được thực hiện dựa trên dữ liệu đang được hiển thị tại đây.</li>
-                            <li><strong>Tổng quan Thị trường:</strong> Cung cấp cái nhìn toàn cảnh về định vị giá của các thương hiệu và sự phân bổ của các chủng loại cà phê.</li>
-                            <li><strong>Phân tích Cạnh tranh:</strong> Trực quan hóa vị thế của các thương hiệu trên thị trường dựa trên giá trung bình và số lượng sản phẩm (SKUs).</li>
-                            <li><strong>Vận hành Logistics:</strong> Tích hợp mô phỏng tổng chi phí thực tế khách hàng phải trả dựa trên giá trị giỏ hàng và chính sách freeship của từng thương hiệu.</li>
-                            <li><strong>Phân tích AI:</strong> Cho phép bạn đặt câu hỏi bằng ngôn ngữ tự nhiên để nhận được các phân tích và khuyến nghị chiến lược từ AI dựa trên các thống kê từ dữ liệu hiện tại.</li>
+                            <li data-lang-key="help_key_components_2_1"><strong>SST Data:</strong> This is where the Single Source of Truth is displayed. It's your data management hub, and all analyses are based on the data shown here.</li>
+                            <li data-lang-key="help_key_components_2_2"><strong>Market Overview:</strong> Provides a high-level view of brand price positioning and the distribution of coffee types.</li>
+                            <li data-lang-key="help_key_components_2_3"><strong>Competitive Analysis:</strong> Visualizes the market position of brands based on average price and number of products (SKUs).</li>
+                            <li data-lang-key="help_key_components_2_4"><strong>Logistics Operations:</strong> Integrates a simulation of the total actual cost to the customer based on cart value and each brand's freeship policy.</li>
+                            <li data-lang-key="help_key_components_2_5"><strong>AI Analysis:</strong> Allows you to ask questions in natural language to receive strategic analyses and recommendations from an AI based on statistics from the current data.</li>
                         </ul>
                     </li>
                 </ul>
             </div>
 
             <div>
-                <h3 class="text-lg font-semibold mb-2 text-gray-900">Chức năng Tab Dữ liệu SST</h3>
+                <h3 class="text-lg font-semibold mb-2 text-gray-900" data-lang-key="help_sst_functions_title">SST Data Tab Functions</h3>
                  <ul class="list-disc list-inside space-y-2 pl-2">
-                    <li><strong>Thêm dữ liệu:</strong> Cho phép bạn tải lên một file CSV để bổ sung dữ liệu vào hệ thống. Hệ thống sẽ tự động gán các ID duy nhất cho các hàng không có ID.</li>
-                    <li><strong>Tạo file CSV:</strong> Tải xuống toàn bộ dữ liệu đang hiển thị ra file CSV.</li>
-                    <li><strong>Thiết lập Hiển thị & Khóa:</strong>
+                    <li data-lang-key="help_sst_functions_1"><strong>Add Data:</strong> Allows you to upload a CSV file to add data to the system. The system will automatically assign unique IDs to rows that don't have one.</li>
+                    <li data-lang-key="help_sst_functions_2"><strong>Export to CSV:</strong> Downloads all currently displayed data to a CSV file.</li>
+                    <li><strong data-lang-key="help_sst_functions_3_title">Display & Key Settings:</strong>
                         <ul class="list-disc list-inside ml-5 mt-1 space-y-2">
                             <li class="flex items-start">
                                 <div class="flex-shrink-0 w-6 flex justify-center pt-0.5">
@@ -359,32 +439,37 @@
                                         <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd"></path>
                                     </svg>
                                 </div>
-                                <span class="ml-2">Bật/tắt hiển thị của từng cột trên lưới hiển thị.</span>
+                                <span class="ml-2" data-lang-key="help_sst_functions_3_1">Toggle the visibility of each column in the grid.</span>
                             </li>
                             <li class="flex items-start">
                                 <div class="flex-shrink-0 w-6 flex justify-center pt-0.5">
                                     <input id="deduplicate-key" type="checkbox" class="form-checkbox h-5 w-5 text-purple-600 rounded focus:ring-purple-500" checked>
                                 </div>
-                                <label for="deduplicate-key" class="ml-2">
-                                    Chọn các cột làm "khóa" để chống trùng lặp. Các hàng có cùng giá trị trên tất cả các cột đã chọn sẽ bị ẩn đi, chỉ giữ lại hàng đầu tiên theo thứ tự sắp xếp hiện tại.
+                                <label for="deduplicate-key" class="ml-2" data-lang-key="help_sst_functions_3_2">
+                                    Select columns to use as "keys" for deduplication. Rows with the same values across all selected columns will be hidden, keeping only the first row according to the current sort order.
                                 </label>
                             </li>
                         </ul>
                     </li>
-                     <li><strong>Kiểm tra cập nhật giá:</strong> Tự động truy cập vào các "Link Mô tả" (cột "Link") và cập nhật lại giá cho các sản phẩm. Trạng thái sẽ được cập nhật:
+                     <li><strong data-lang-key="help_sst_functions_4_title">Check for Price Updates:</strong> <span data-lang-key="help_sst_functions_4_desc">Automatically visits the "Product Link" (the "Link" column) and updates the prices for the products. The status will be updated:</span>
                         <ul class="list-disc list-inside ml-5 mt-1 space-y-1">
-                            <li><strong>Mới:</strong> Giá đã thay đổi. Nhấn vào nút để tạo một phiên bản mới với giá đã cập nhật.</li>
-                            <li><strong>Cảnh báo (số):</strong> Không tìm thấy giá bằng việc scraping với selector (cột "HTML"), nhưng tìm thấy nhiều hơn 1 kết quả khớp với giá cũ trong hàng dữ liệu. Cần cập nhật lại selector để có thể scraping thành công.</li>
-                            <li><strong>Lỗi:</strong> Không tìm thấy giá bằng việc scraping với selector (cột "HTML") và cũng không tìm thấy giá khớp với giá cũ trong hàng dữ liệu. Nhiều khả năng URL đã bị thay đổi.</li>
+                            <li data-lang-key="help_sst_functions_4_1"><strong>New:</strong> The price has changed. Click the button to create a new version with the updated price.</li>
+                            <li data-lang-key="help_sst_functions_4_2"><strong>Warning (number):</strong> The price was not found by scraping with the selector (the "HTML" column), but more than one match for the old price was found in the data row. The selector needs to be updated for successful scraping.</li>
+                            <li data-lang-key="help_sst_functions_4_3"><strong>Error:</strong> The price was not found by scraping with the selector (the "HTML" column) and no match for the old price was found in the data row. The URL has likely changed.</li>
                         </ul>
                      </li>
-                     <li><strong>Thêm tất cả thay đổi:</strong> Tự động tạo phiên bản mới cho tất cả các hàng có trạng thái là "Mới".</li>
+                     <li data-lang-key="help_sst_functions_5"><strong>Add All Changes:</strong> Automatically creates a new version for all rows with the status "New".</li>
                 </ul>
             </div>
 
              <div>
-                <h3 class="text-lg font-semibold mb-2 text-gray-900">Hàng đợi Tác vụ</h3>
-                <p>Hàng đợi này xuất hiện khi bạn chạy chức năng "Kiểm tra cập nhật giá". Nó cho phép bạn theo dõi tiến trình và quản lý các tác vụ. Bạn có thể kéo thả, thu gọn để tiết kiệm không gian.</p>
+                <h3 class="text-lg font-semibold mb-2 text-gray-900" data-lang-key="help_task_queue_title">Task Queue</h3>
+                <p data-lang-key="help_task_queue_desc">This queue appears when you run the "Check for Price Updates" function. It allows you to monitor progress and manage tasks. You can drag, drop, and collapse it to save space.</p>
+            </div>
+            <div style="margin-top: 50px; padding: 20px; text-align: center; background-color: #fffbe6; border: 1px solid #ffe58f; border-radius: 8px; color: #614700; font-size: 16px;">
+            <strong data-lang-key="help_support_title">🎉 Find this application useful?</strong><br>
+            <span data-lang-key="help_support_desc">Please <a href="https://www.buymeacoffee.com/anlt" target="_blank" style="color: #d48806; font-weight: bold; text-decoration: underline;">buy me a coffee</a> to fuel further development ☕.</span><br><br>
+            <span data-lang-key="help_support_thanks">Your support is a great source of inspiration. Thank you sincerely 💛</span>
             </div>
         </div>
     </div>
@@ -393,6 +478,275 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    // --- 0. LANGUAGE & TRANSLATION ---
+    const translations = {
+        en: {
+            page_title: "\"Deep Search\" Data Collection and Verification (Online Coffee Shelf version)",
+            main_title: "Online Coffee Shelf Data",
+            user_guide_title: "User Guide",
+            time_filter_label: "Time Filter:",
+            sst_data_tab: "SST Data",
+            market_overview_tab: "Market Overview",
+            competitive_analysis_tab: "Competitive Analysis",
+            logistics_ops_tab: "Logistics Operations",
+            ai_analysis_tab: "AI Analysis",
+            add_data_btn: "Add Data",
+            export_csv_btn: "📤 Export to CSV",
+            add_all_changes_btn: "Add All Changes",
+            check_price_updates_btn: "Check for Price Updates",
+            settings_btn_title: "Display & Key Settings",
+            avg_price_chart_title: "Average Price Positioning by Brand (VND/kg)",
+            coffee_type_chart_title: "Coffee Type Distribution",
+            brand_map_chart_title: "Brand Positioning Map",
+            brand_map_chart_subtitle: "Brand Segmentation by AI",
+            brand_map_chart_x_axis: "Average Price (VND/kg)",
+            brand_map_chart_y_axis: "Number of Product Lines (SKUs)",
+            brand_map_chart_tip: "Avg. Price",
+            segment_low: "Mass Market",
+            segment_mid: "Mid-High End",
+            segment_high: "Specialty/Luxury",
+            default_shipping_fee_label: "Default Shipping Fee (VND):",
+            freeship_chart_title: "Freeship Threshold Efficiency Analysis",
+            ai_welcome_message: "<strong>Hello!</strong> I am your strategic analysis assistant. Ask a question about the coffee market based on the current data, or select a suggestion below to get started.",
+            ai_suggestions_label: "Analysis Suggestions:",
+            ai_prompt_1: "What are the characteristics of the market segments?",
+            ai_prompt_2: "Compare the logistics strategies of the brands.",
+            ai_prompt_3: "What is the most important factor for high-end customers?",
+            ai_input_placeholder: "Enter your question...",
+            ai_send_btn: "Send",
+            task_queue_title: "Task Queue (<span id=\"task-count\">0</span>)",
+            task_queue_clear_btn: "Clear",
+            settings_modal_title: "Display & Key Settings",
+            settings_modal_desc: "Customize which columns are displayed and which are used as deduplication keys.",
+            settings_modal_cancel_btn: "Cancel",
+            settings_modal_apply_btn: "Apply",
+            api_key_modal_title: "Set Gemini API Key",
+            api_key_modal_desc: "Please provide your Gemini API key to use the AI analysis feature. The key will be stored in your browser session.",
+            api_key_modal_label: "Gemini API Key",
+            api_key_modal_cancel_btn: "Cancel",
+            api_key_modal_save_btn: "Save",
+            help_modal_title: "FYI",
+            help_intro1: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\"><svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg>Data Phin-ter</a></strong>",
+            help_intro2: "This version is designed to integrate the most basic analysis functions so that non-tech users can standardize and accumulate \"deep search data\" (data obtained through the <a href=\"https://gemini.google/overview/deep-research/?hl=en\" target=\"_blank\">Deep Research</a> function of the Gemini large language model) over time.",
+            help_intro3: "<strong>Version:</strong> Online Shelf Data (speed)",
+            help_intro4: "<strong>Version Number:</strong> v1.0+bs4",
+            help_intro5: "<strong>Topic:</strong> Coffee Market",
+            help_key_components_title: "Key Components",
+            help_key_components_1: "<strong>Time Filter:</strong> Allows you to select a time range for analysis. All data and charts on the page will update based on your selection.",
+            help_key_components_2_title: "Navigation Tabs:",
+            help_key_components_2_1: "<strong>SST Data:</strong> This is where the Single Source of Truth is displayed. It's your data management hub, and all analyses are based on the data shown here.",
+            help_key_components_2_2: "<strong>Market Overview:</strong> Provides a high-level view of brand price positioning and the distribution of coffee types.",
+            help_key_components_2_3: "<strong>Competitive Analysis:</strong> Visualizes the market position of brands based on average price and number of products (SKUs).",
+            help_key_components_2_4: "<strong>Logistics Operations:</strong> Integrates a simulation of the total actual cost to the customer based on cart value and each brand's freeship policy.",
+            help_key_components_2_5: "<strong>AI Analysis:</strong> Allows you to ask questions in natural language to receive strategic analyses and recommendations from an AI based on statistics from the current data.",
+            help_sst_functions_title: "SST Data Tab Functions",
+            help_sst_functions_1: "<strong>Add Data:</strong> Allows you to upload a CSV file to add data to the system. The system will automatically assign unique IDs to rows that don't have one.",
+            help_sst_functions_2: "<strong>Export to CSV:</strong> Downloads all currently displayed data to a CSV file.",
+            help_sst_functions_3_title: "Display & Key Settings:",
+            help_sst_functions_3_1: "Toggle the visibility of each column in the grid.",
+            help_sst_functions_3_2: "Select columns to use as \"keys\" for deduplication. Rows with the same values across all selected columns will be hidden, keeping only the first row according to the current sort order.",
+            help_sst_functions_4_title: "Check for Price Updates:",
+            help_sst_functions_4_desc: "Automatically visits the <strong>\"Description Links\"</strong> (the <strong>Link</strong> column) to verify and update the prices for the products, except for products had status <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Old</span>. The status will be updated:",
+            help_sst_functions_4_1: "<strong><span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">New</span>:</strong> The price has changed. Click the <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Add?</span> button to create a new version with the updated price.",
+            help_sst_functions_4_2: "<strong><span class=\"bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-2 rounded\">Warning <(number)></span>:</strong> The price was not found by scraping with the selector (the <strong>\"HTML\"</strong> column), but more than one (exact number is displayed in <(number)> and not displayed if it is \"1\") match for the old price was found in the data row. The selector needs to be updated to ensure data accuracy.",
+            help_sst_functions_4_3: "<strong><span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Error</span>:</strong> The price was not found by scraping with the selector (the <strong>\"HTML\"</strong> column) and no match for the old price was found in the data row. The URL has likely changed or is simply incorrect. Click the <span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Remove?</span> button to remove the row completely from the SST data.",
+            help_sst_functions_5: "<strong>Add All Changes:</strong> Automatically creates a new version (of the form \"\<current row ID\>-v\<version number\>\") for all rows with the status <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>.",
+            help_task_queue_title: "Task Queue",
+            help_task_queue_desc: "This queue appears when you run the <strong>\"Check for Price Updates\"</strong> function. It allows you to monitor progress and manage tasks. You can drag, drop, and collapse it to save space.",
+            help_support_title: "🎉 Find this application useful?",
+            help_support_desc: "Please <a href=\"https://www.buymeacoffee.com/anlt\" target=\"_blank\" style=\"color: #d48806; font-weight: bold; text-decoration: underline;\">buy me a coffee</a> to fuel further development ☕.",
+            help_support_thanks: "Your support is a great source of inspiration. Thank you sincerely 💛",
+            col_id: "ID",
+            col_header_status_update: "Price Updated?",
+            col_header_product: "Product Name",
+            col_header_brand: "Brand Name",
+            col_header_list_price: "Listed Price (VND)",
+            col_header_date_added: "Date",
+            col_header_shipping_fee: "Shipping Fee (VND)",
+            col_header_freeship_threshold: "Freeship Threshold (VND)",
+            col_header_source: "Citation Source",
+            col_header_coffee_type: "Coffee Type",
+            col_header_unit: "Unit",
+            col_header_location: "Sell Location",
+            col_header_link: "Product Link",
+            col_header_html_selector: "HTML Selector (Price)",
+            col_header_ecommerce_platform: "E-commerce Platform",
+            col_header_update_status: "Update Status",
+            col_status_update: "Price Updated?",
+            col_product: "Product",
+            col_brand: "Brand",
+            col_list_price: "Listed Price (VND)",
+            col_date_added: "Date",
+            col_shipping_fee: "Shipping Fee (VND)",
+            col_freeship_threshold: "Freeship Threshold (VND)",
+            col_source: "Source",
+            col_coffee_type: "Product Type",
+            col_unit: "Unit",
+            col_location: "Location",
+            col_link: "Link",
+            col_html_selector: "HTML",
+            col_ecommerce_platform: "E-commerce Platform",
+            col_update_status: "Update Status",
+            download_file_name: "sst-en.csv",
+            status_add_btn: "Add?",
+            status_new: "New",
+            status_error: "Error",
+            status_warning: "Warning",
+            status_remove_btn: "Remove?",
+            status_updated: "Live",
+            status_outdated: "Old",
+            status_not_checked: "Not Checked",
+            alert_in_progress: "A check is already in progress. Please wait.",
+            alert_invalid_csv: "Invalid or empty CSV file.",
+            alert_no_valid_data: "No valid data in the file to add.",
+            alert_rows_added: "rows added successfully.",
+            alert_no_export_data: "No data to export.",
+            alert_enter_api_key: "Please enter a valid API Key.",
+            alert_cannot_cancel_task: 'Cannot cancel running task',
+            alert_cannot_clear_task: 'Cannot remove task from the queue',
+            loading_ai: "AI expert is analyzing...",
+            error_ai: "An error occurred during analysis:",
+            error_ai_response: "Sorry, I couldn't generate a response at this time.",
+            cart_value: 'Cart Value (VND)',
+            total_customer_cost: 'Total Customer Cost (VND)',
+            cart: 'Cart',
+            total_cost: 'Total Cost'
+        },
+        vn: {
+            page_title: "Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu \"Tìm Kiếm Sâu\" (bản Kệ Hàng Cà Phê Trực Tuyến)",
+            main_title: "Dữ Liệu Kệ Hàng Cà Phê Trực Tuyến",
+            user_guide_title: "Hướng dẫn sử dụng",
+            time_filter_label: "Bộ lọc Thời gian:",
+            sst_data_tab: "Dữ Liệu SST",
+            market_overview_tab: "Tổng quan Thị trường",
+            competitive_analysis_tab: "Phân tích Cạnh tranh",
+            logistics_ops_tab: "Vận hành Logistics",
+            ai_analysis_tab: "Phân tích AI",
+            add_data_btn: "Thêm dữ liệu",
+            export_csv_btn: "📤 Tạo file CSV",
+            add_all_changes_btn: "Thêm tất cả thay đổi",
+            check_price_updates_btn: "Kiểm tra cập nhật giá",
+            settings_btn_title: "Thiết lập Hiển thị & Khóa",
+            avg_price_chart_title: "Định vị Giá Trung bình theo Thương hiệu (VND/kg)",
+            coffee_type_chart_title: "Phân bổ Chủng loại Cà phê",
+            brand_map_chart_title: "Bản đồ Định vị Thương hiệu",
+            brand_map_chart_subtitle: "Phân khúc Thương hiệu theo AI",
+            brand_map_chart_x_axis: "Mức giá trung bình/kg (VND)",
+            brand_map_chart_y_axis: "Số lượng dòng sản phẩm (SKUs)",
+            brand_map_chart_tip: "Giá TB",
+            segment_low: "Phổ thông",
+            segment_mid: "Trung-Cao cấp",
+            segment_high: "Đặc sản/Luxury",
+            default_shipping_fee_label: "Phí ship mặc định (VND):",
+            freeship_chart_title: "Phân tích Hiệu quả Ngưỡng Freeship",
+            ai_welcome_message: "<strong>Xin chào!</strong> Tôi là trợ lý phân tích chiến lược. Hãy đặt câu hỏi về thị trường cà phê dựa trên dữ liệu đang hiển thị, hoặc chọn một gợi ý bên dưới để bắt đầu.",
+            ai_suggestions_label: "Gợi ý phân tích:",
+            ai_prompt_1: "Phân khúc thị trường đang có những đặc điểm gì?",
+            ai_prompt_2: "So sánh chiến lược logistics của các thương hiệu.",
+            ai_prompt_3: "Yếu tố nào quan trọng nhất với khách hàng cao cấp?",
+            ai_input_placeholder: "Nhập câu hỏi của bạn...",
+            ai_send_btn: "Gửi",
+            task_queue_title: "Hàng đợi tác vụ (<span id=\"task-count\">0</span>)",
+            task_queue_clear_btn: "Làm Trống",
+            settings_modal_title: "Thiết lập Hiển thị & Khóa",
+            settings_modal_desc: "Tùy chỉnh các cột được hiển thị và các cột được sử dụng làm khóa chống trùng lặp.",
+            settings_modal_cancel_btn: "Hủy",
+            settings_modal_apply_btn: "Áp dụng",
+            api_key_modal_title: "Thiết lập Gemini API Key",
+            api_key_modal_desc: "Vui lòng cung cấp khóa API Gemini của bạn để sử dụng chức năng phân tích AI. Khóa sẽ được lưu trữ trong phiên làm việc của trình duyệt.",
+            api_key_modal_label: "Gemini API Key",
+            api_key_modal_cancel_btn: "Hủy",
+            api_key_modal_save_btn: "Lưu",
+            help_modal_title: "Mô tả Chức năng",
+            help_intro1: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\"><svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg>Data Phin-ter</a></strong>",
+            help_intro2: "Giải pháp được thiết kế và tích hợp những chức năng phân tích cơ bản nhất mà một người sử dụng phổ thông có thể sử dụng cho việc chuẩn hóa và tích lũy dữ liệu chất lượng cao, có được thông qua chức năng <a href=\"https://gemini.google/overview/deep-research/?hl=vn\" target=\"_blank\">Deep Research</a> của mô hình ngôn ngữ lớn Gemini",
+            help_intro3: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ửu tiên tốc độ)",
+            help_intro4: "<strong>Số phiên bản:</strong> v1.0+bs4",
+            help_intro5: "<strong>Chủ đề:</strong> Thị Trường Cà Phê",
+            help_key_components_title: "Các Thành phần Chính",
+            help_key_components_1: "<strong>Lọc theo Thời gian:</strong> Cho phép bạn chọn một khoảng thời gian để phân tích. Toàn bộ dữ liệu và biểu đồ trên trang sẽ được cập nhật theo lựa chọn của bạn.",
+            help_key_components_2_title: "Các Tab Điều hướng:",
+            help_key_components_2_1: "<strong>Dữ liệu SST:</strong> Nơi hiển thị Nguồn Chân Lý Duy Nhất (Single Source of Truth). Đây là trung tâm quản lý dữ liệu của bạn và tất cả các phân tích sẽ được thực hiện dựa trên dữ liệu đang được hiển thị tại đây.",
+            help_key_components_2_2: "<strong>Tổng quan Thị trường:</strong> Cung cấp cái nhìn toàn cảnh về định vị giá của các thương hiệu và sự phân bổ của các chủng loại cà phê.",
+            help_key_components_2_3: "<strong>Phân tích Cạnh tranh:</strong> Trực quan hóa vị thế của các thương hiệu trên thị trường dựa trên giá trung bình và số lượng sản phẩm (SKUs).",
+            help_key_components_2_4: "<strong>Vận hành Logistics:</strong> Tích hợp mô phỏng tổng chi phí thực tế khách hàng phải trả dựa trên giá trị giỏ hàng và chính sách freeship của từng thương hiệu.",
+            help_key_components_2_5: "<strong>Phân tích AI:</strong> Cho phép bạn đặt câu hỏi bằng ngôn ngữ tự nhiên để nhận được các phân tích và khuyến nghị chiến lược từ AI dựa trên các thống kê từ dữ liệu hiện tại.",
+            help_sst_functions_title: "Chức năng Tab Dữ liệu SST",
+            help_sst_functions_1: "<strong>Thêm dữ liệu:</strong> Cho phép bạn tải lên một file CSV để bổ sung dữ liệu vào hệ thống. Hệ thống sẽ tự động gán các ID duy nhất cho các hàng không có ID.",
+            help_sst_functions_2: "<strong>Tạo file CSV:</strong> Tải xuống toàn bộ dữ liệu đang hiển thị ra file CSV.",
+            help_sst_functions_3_title: "Thiết lập Hiển thị & Khóa:",
+            help_sst_functions_3_1: "Bật/tắt hiển thị của từng cột trên lưới hiển thị.",
+            help_sst_functions_3_2: "Chọn các cột làm \"khóa\" để chống trùng lặp. Các hàng có cùng giá trị trên tất cả các cột đã chọn sẽ bị ẩn đi, chỉ giữ lại hàng đầu tiên theo thứ tự sắp xếp hiện tại.",
+            help_sst_functions_4_title: "Kiểm tra cập nhật giá:",
+            help_sst_functions_4_desc: "Automatically visits the <strong>\"Description Links\"</strong> (the <strong>Link</strong> column) to verify and update the prices for the products, except for products had status <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Old</span>. The status will be updated:",
+            help_sst_functions_4_desc: "Tự động truy cập vào các <strong>\"Link Mô tả\"</strong> (cột <strong>Link</strong>) để kiểm chứng và cập nhật lại giá cho các sản phẩm, trừ các sản phẩm có nhãn là <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Cũ</span>. Trạng thái sẽ được cập nhật:",
+            help_sst_functions_4_1: "<strong><span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>:</strong> Giá đã thay đổi. Nhấn vào nút <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Thêm?</span> để tạo một phiên bản mới với giá đã cập nhật.",
+            help_sst_functions_4_2: "<strong><span class=\"bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-2 rounded\">Cảnh báo <(số)></span>:</strong> Không tìm thấy giá bằng việc scraping với selector (cột <strong>HTML</strong>), nhưng tìm thấy nhiều hơn 1 (số chính xác được hiển thị ở <(số)> và không hiển thị nếu đó là \"1\") kết quả khớp với giá cũ trong hàng dữ liệu. Cần cập nhật lại selector để đảm bảo tính chính xác của dữ liệu.",
+            help_sst_functions_4_3: "<strong><span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Lỗi</span>:</strong> Không tìm thấy giá bằng việc scraping với selector (cột <strong>HTML</strong>) và cũng không tìm thấy giá khớp với giá cũ trong hàng dữ liệu. Nhiều khả năng URL đã bị thay đổi hoặc được thu thập một cách không chính xác. Nhấn vào nút <span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Xóa?</span> để xóa hàng lỗi hoàn toàn khỏi dữ liệu SST.",
+            help_sst_functions_5: "<strong>Thêm tất cả thay đổi:</strong> Tự động tạo phiên bản mới (có dạng \"\<ID của hàng hiện tại\>-v\<số phiên bản\>\") cho tất cả các hàng có trạng thái là <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>.",
+            help_task_queue_title: "Hàng đợi Tác vụ",
+            help_task_queue_desc: "Hàng đợi này xuất hiện khi bạn chạy chức năng <strong>\"Kiểm tra cập nhật giá\"</strong>. Nó cho phép bạn theo dõi tiến trình và quản lý các tác vụ. Bạn có thể kéo thả, thu gọn để tiết kiệm không gian.",
+            help_support_title: "🎉 Bạn thấy ứng dụng này hữu ích?",
+            help_support_desc: "Hãy <a href=\"https://www.buymeacoffee.com/anlt\" target=\"_blank\" style=\"color: #d48806; font-weight: bold; text-decoration: underline;\">mua cho tôi một ly cà phê</a> để tiếp thêm động lực phát triển ☕.",
+            help_support_thanks: "Mọi sự ủng hộ của bạn là nguồn cảm hứng rất lớn. Chân thành cảm ơn 💛",
+            col_id: "ID",
+            col_header_status_update: "Giá đã cập nhật?",
+            col_header_product: "Sản phẩm",
+            col_header_brand: "Thương hiệu",
+            col_header_list_price: "Giá niêm yết (VND)",
+            col_header_date_added: "Ngày Thêm",
+            col_header_shipping_fee: "Phí ship (VND)",
+            col_header_freeship_threshold: "Ngưỡng Freeship (VND)",
+            col_header_source: "Nguồn Trích dẫn",
+            col_header_coffee_type: "Loại Cà phê",
+            col_header_unit: "Đơn vị tính",
+            col_header_location: "Tại Địa phương",
+            col_header_link: "Link Mô tả",
+            col_header_html_selector: "HTML Selector (Giá)",
+            col_header_ecommerce_platform: "Nền tảng TMĐT",
+            col_header_update_status: "Tình trạng Giá",
+            col_status_update: "Giá đã cập nhật?",
+            col_product: "Sản phẩm",
+            col_brand: "Thương hiệu",
+            col_list_price: "Giá niêm yết (VND)",
+            col_date_added: "Ngày Thêm",
+            col_shipping_fee: "Phí ship (VND)",
+            col_freeship_threshold: "Ngưỡng Freeship (VND)",
+            col_source: "Nguồn",
+            col_coffee_type: "Loại SP",
+            col_unit: "Đơn vị tính",
+            col_location: "Địa phương",
+            col_link: "Link",
+            col_html_selector: "HTML",
+            col_ecommerce_platform: "TMĐT",
+            col_update_status: "Tình trạng Giá",
+            download_file_name: "sst-vn.csv",
+            status_add_btn: "Thêm?",
+            status_new: "Mới",
+            status_error: "Lỗi",
+            status_warning: "Cảnh báo",
+            status_remove_btn: "Xóa?",
+            status_updated: "Đã",
+            status_outdated: "Cũ",
+            status_not_checked: "Chưa KT",
+            alert_in_progress: "Một quá trình kiểm tra đang được thực hiện. Vui lòng đợi.",
+            alert_invalid_csv: "Tệp CSV không hợp lệ hoặc trống.",
+            alert_no_valid_data: "Không có dữ liệu hợp lệ trong tệp để thêm.",
+            alert_rows_added: "hàng đã được thêm thành công.",
+            alert_no_export_data: "Không có dữ liệu để xuất.",
+            alert_enter_api_key: "Vui lòng nhập một API Key hợp lệ.",
+            alert_cannot_cancel_task: 'Không thể hủy tác vụ đang chạy',
+            alert_cannot_clear_task: 'Xóa tác vụ khỏi hàng đợi',
+            loading_ai: "Chuyên gia AI đang phân tích...",
+            error_ai: "Đã xảy ra lỗi trong quá trình phân tích:",
+            error_ai_response: "Xin lỗi, tôi không thể tạo phản hồi vào lúc này.",
+            cart_value: 'Giá trị giỏ hàng (VND)',
+            total_customer_cost: 'Tổng chi phí khách hàng trả (VND)',
+            cart: 'Giỏ hàng',
+            total_cost: 'Tổng trả'
+        }
+    };
+    
     // --- 1. DATA SECTION (SYNCHRONIZED SST) ---
     // Set sst_data to empty as requested for debugging.
     let sst_data = [];
@@ -402,8 +756,10 @@ document.addEventListener('DOMContentLoaded', function () {
     let taskQueue = [];
     let avgTaskTime = 15000;
     let completedTaskTimes = [];
+    const savedLang = localStorage.getItem('language') || 'vn';
+    let currentLang = savedLang;
     let sstGridOptions;
-    let deduplicationKeys = ["ID", "Sản phẩm", "Thương hiệu", "Nguồn", "Link Mô tả", "Loại Cà phê", "Đơn vị tính", "Giá niêm yết (VND)", "Phí ship (VND)", "Ngưỡng Freeship (VND)", "Tại Địa Phương", "HTML", "date", "updateStatus", "Nền tảng TMĐT"];
+    let deduplicationKeys = ["ID"];
     let geminiApiKey = sessionStorage.getItem('geminiApiKey') || null;
 
     const getFormattedDate = () => {
@@ -411,6 +767,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const year = today.getFullYear();
         const mm = String(today.getMonth() + 1).padStart(2, '0');
         const dd = String(today.getDate()).padStart(2, '0');
+        if (currentLang === 'vn') {
+            return `${year}-${mm}-${dd}`;
+        }
         return `${year}-${mm}-${dd}`;
     };
 
@@ -428,20 +787,43 @@ document.addEventListener('DOMContentLoaded', function () {
         return (price / weightInGrams) * 1000;
     };
 
-    const parseDateString = (dateStr) => {
+    const parseDateString = (dateStr, lang) => {
         if (!dateStr || typeof dateStr !== 'string') return null;
-        
+
         let d;
-        const parts = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
-        if (parts) {
-            const isoDateStr = `${parts[3]}-${String(parts[2]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}T00:00:00`;
-            d = new Date(isoDateStr);
-            if (!isNaN(d.getTime())) return d;
+        let parts;
+
+        if (lang === 'vn') {
+            // Chuẩn Việt Nam: DD/MM/YYYY hoặc DD-MM-YYYY
+            parts = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+            if (parts) {
+                // Đảm bảo tháng và ngày có 2 chữ số (padding with 0)
+                const day = String(parts[1]).padStart(2, '0');
+                const month = String(parts[2]).padStart(2, '0');
+                const year = parts[3];
+                const isoDateStr = `${year}-${month}-${day}T00:00:00`;
+                d = new Date(isoDateStr);
+                if (!isNaN(d.getTime())) return d;
+            }
+        } else if (lang === 'en') {
+            // Chuẩn Anh/Mỹ: MM/DD/YYYY hoặc MM-DD-YYYY
+            parts = dateStr.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+            if (parts) {
+                // Đảm bảo tháng và ngày có 2 chữ số (padding with 0)
+                const month = String(parts[1]).padStart(2, '0');
+                const day = String(parts[2]).padStart(2, '0');
+                const year = parts[3];
+                const isoDateStr = `${year}-${month}-${day}T00:00:00`;
+                d = new Date(isoDateStr);
+                if (!isNaN(d.getTime())) return d;
+            }
         }
 
+        // Thử tạo Date object trực tiếp từ chuỗi (để xử lý các định dạng chuẩn ISO hoặc định dạng khác mà JS có thể hiểu)
         d = new Date(dateStr);
-        if (!isNaN(d.getTime())) return d;
         
+        if (!isNaN(d.getTime())) return d;
+
         return null;
     };
 
@@ -533,7 +915,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const strValue = String(value);
         const match = strValue.match(/(\d[\d,.]*)/);
         if (match) {
-            return parseFloat(match[0].replace(/,/g, ''));
+            if (currentLang === "vn") {
+                // Chuyển đổi dấu phẩy thành dấu chấm nếu là tiếng Việt
+                return parseFloat(match[0].replace(/,/g, ''));
+            }
+            return parseFloat(match[0].replace(/\./g, ''));
         }
         return null;
     };
@@ -544,92 +930,137 @@ document.addEventListener('DOMContentLoaded', function () {
         let startElemX, startElemY;
 
         handle.addEventListener("mousedown", dragStart, false);
+        handle.addEventListener("touchstart", dragStart, false); // Add touch support
 
         function dragStart(e) {
-            // Ngăn chặn các hành vi mặc định (như chọn văn bản)
             e.preventDefault();
 
-            // Lấy vị trí ban đầu của con trỏ chuột
-            startMouseX = e.clientX;
-            startMouseY = e.clientY;
+            if (e.type === "touchstart") {
+                startMouseX = e.touches[0].clientX;
+                startMouseY = e.touches[0].clientY;
+            } else {
+                startMouseX = e.clientX;
+                startMouseY = e.clientY;
+            }
 
-            // Lấy vị trí transform hiện tại của phần tử
             const transformMatrix = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
             startElemX = transformMatrix.m41;
             startElemY = transformMatrix.m42;
             
-            // Kích hoạt trạng thái kéo
             active = true;
 
-            // Lắng nghe sự kiện trên toàn bộ tài liệu để kéo không bị gián đoạn
             document.addEventListener("mousemove", drag, false);
             document.addEventListener("mouseup", dragEnd, false);
+            document.addEventListener("touchmove", drag, false); // Add touch support
+            document.addEventListener("touchend", dragEnd, false); // Add touch support
         }
 
         function drag(e) {
             if (active) {
-                // Tính toán khoảng cách chuột đã di chuyển so với điểm bắt đầu
-                const deltaX = e.clientX - startMouseX;
-                const deltaY = e.clientY - startMouseY;
+                let currentX, currentY;
+                if (e.type === "touchmove") {
+                    currentX = e.touches[0].clientX;
+                    currentY = e.touches[0].clientY;
+                } else {
+                    currentX = e.clientX;
+                    currentY = e.clientY;
+                }
 
-                // Vị trí mới = Vị trí ban đầu của phần tử + Khoảng cách chuột đã di chuyển
+                const deltaX = currentX - startMouseX;
+                const deltaY = currentY - startMouseY;
+
                 const newX = startElemX + deltaX;
                 const newY = startElemY + deltaY;
 
-                // Áp dụng vị trí mới bằng transform3d để tối ưu hiệu suất
                 element.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
             }
         }
 
         function dragEnd(e) {
-            // Hủy trạng thái kéo
             active = false;
-            // Dọn dẹp các sự kiện lắng nghe để tiết kiệm tài nguyên
             document.removeEventListener("mousemove", drag, false);
             document.removeEventListener("mouseup", dragEnd, false);
+            document.removeEventListener("touchmove", drag, false);
+            document.removeEventListener("touchend", dragEnd, false);
             adjustTaskQueuePosition();
         }
     };
 
     const adjustTaskQueuePosition = () => {
         const element = document.getElementById('task-queue-container');
-        // Lấy kích thước của cửa sổ trình duyệt
         const chieuRongManHinh = window.innerWidth;
         const chieuCaoManHinh = window.innerHeight;
-        const khoangDem = 16; // Khoảng đệm 1rem để không bị dính sát vào cạnh
+        const khoangDem = 8; // Adjusted padding for mobile (0.5rem)
 
-        // Lấy thông tin vị trí và kích thước hiện tại của thanh Hàng đợi
         const rect = element.getBoundingClientRect();
 
-        // Lấy giá trị transform X và Y hiện tại một lần duy nhất
         const transformMatrix = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
         let viTriX_Moi = transformMatrix.m41;
         let viTriY_Moi = transformMatrix.m42;
 
-        // --- Kiểm tra và tính toán vị trí mới cho cả 4 cạnh ---
-
-        // 1. Kiểm tra cạnh phải
-        if (rect.right > chieuRongManHinh) {
-            viTriX_Moi -= (rect.right - chieuRongManHinh + khoangDem);
+        // Ensure it stays within bounds
+        if (rect.right > chieuRongManHinh - khoangDem) {
+            viTriX_Moi -= (rect.right - (chieuRongManHinh - khoangDem));
+        }
+        if (rect.left < khoangDem) {
+            viTriX_Moi += (khoangDem - rect.left);
+        }
+        if (rect.bottom > chieuCaoManHinh - khoangDem) {
+            viTriY_Moi -= (rect.bottom - (chieuCaoManHinh - khoangDem));
+        }
+        if (rect.top < khoangDem) {
+            viTriY_Moi += (khoangDem - rect.top);
         }
 
-        // 2. Kiểm tra cạnh trái
-        if (rect.left < 0) {
-            viTriX_Moi += (Math.abs(rect.left) + khoangDem);
-        }
-
-        // 3. Kiểm tra cạnh dưới
-        if (rect.bottom > chieuCaoManHinh) {
-            viTriY_Moi -= (rect.bottom - chieuCaoManHinh + khoangDem);
-        }
-
-        // 4. Kiểm tra cạnh trên
-        if (rect.top < 0) {
-            viTriY_Moi += (Math.abs(rect.top) + khoangDem);
-        }
-
-        // Áp dụng vị trí đã được điều chỉnh một lần duy nhất
         element.style.transform = `translate3d(${viTriX_Moi}px, ${viTriY_Moi}px, 0)`;
+    };
+
+    // Function to make chart containers resizable
+    const makeResizable = (element) => {
+        const handle = element.querySelector('.resize-handle.bottom-right'); // Only target bottom-right
+        if (!handle) return; // Exit if handle not found
+
+        let startX, startY, startWidth, startHeight;
+
+        const initResize = (e) => {
+            e.preventDefault();
+            startX = e.clientX || e.touches[0].clientX;
+            startY = e.clientY || e.touches[0].clientY;
+            startWidth = element.offsetWidth;
+            startHeight = element.offsetHeight;
+
+            document.addEventListener('mousemove', resize, false);
+            document.addEventListener('mouseup', stopResize, false);
+            document.addEventListener('touchmove', resize, false);
+            document.addEventListener('touchend', stopResize, false);
+        };
+
+        const resize = (e) => {
+            let currentX = e.clientX || e.touches[0].clientX;
+            let currentY = e.clientY || e.touches[0].clientY;
+            
+            let newWidth = startWidth + (currentX - startX);
+            let newHeight = startHeight + (currentY - startY);
+
+            element.style.width = Math.max(200, newWidth) + 'px'; // Minimum width
+            element.style.height = Math.max(200, newHeight) + 'px'; // Minimum height
+
+            // Update chart inside
+            const chartId = element.dataset.chartId;
+            if (charts[chartId]) {
+                charts[chartId].resize(); // Trigger Chart.js resize
+            }
+        };
+
+        const stopResize = () => {
+            document.removeEventListener('mousemove', resize, false);
+            document.removeEventListener('mouseup', stopResize, false);
+            document.removeEventListener('touchmove', resize, false);
+            document.removeEventListener('touchend', stopResize, false);
+        };
+
+        handle.addEventListener('mousedown', initResize, false);
+        handle.addEventListener('touchstart', initResize, false);
     };
 
 
@@ -669,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999).getTime();
 
             filteredData = filteredData.filter(item => {
-                const itemDate = parseDateString(item.date);
+                const itemDate = parseDateString(item[translations["vn"].col_date_added], currentLang);
                 if (!itemDate) return false;
                 const itemTime = itemDate.getTime();
                 return itemTime >= start && itemTime <= end;
@@ -689,7 +1120,6 @@ document.addEventListener('DOMContentLoaded', function () {
         
         filteredData.forEach(item => {
             const key = deduplicationKeys.map(k => item[k]).join('||');
-            console.log(`Checking item with key: ${key}`);
             if (seen.has(key)) {
                 rowsToRemove.push(item);
             } else {
@@ -705,7 +1135,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return filteredData;
     };
 
-    const applyAllFilters = (startDate, endDate) => {
+    const applyAllFilters = (startDate, endDate, is_remove=false) => {
         filteredData = [...sst_data];
         
         const fromDate = picker.getStartDate();
@@ -713,15 +1143,34 @@ document.addEventListener('DOMContentLoaded', function () {
         filteredData = filterDataByDateRange(filteredData, fromDate, toDate);
         filteredData = dedupData(filteredData);
 
-        
-
-        currentFilteredData = filteredData;
-        rowsToRemove = currentFilteredData.filter(item => !filteredData.includes(item));
-        console.log("rowsToRemove:", rowsToRemove);
         if (sstGridOptions && sstGridOptions.api) {
-            sstGridOptions.api.applyTransaction({ remove: rowsToRemove });
-            sstGridOptions.api.setRowData(currentFilteredData);
+            let sstGridOptionsData = [];
+            sstGridOptions.api.forEachNodeAfterFilterAndSort(node => {
+                sstGridOptionsData.push(node.data);
+            });
+            if (is_remove) {
+                rowsToRemove = sstGridOptionsData.filter(item => !filteredData.includes(item));
+                sstGridOptions.api.applyTransaction({ remove: rowsToRemove });
+            }
+            else {
+                sstGridOptions.api.applyTransaction({ remove: sstGridOptionsData });
+                sstGridOptions.api.setRowData(filteredData);
+            }
         }
+    };
+
+    const getOriginalLangUpdateStatus = (status) => {
+        // Map the status to the current language
+        if (translations[currentLang].status_new === status) {
+            return translations["vn"].status_new;
+        }
+        if (translations[currentLang].status_error === status) {
+            return translations["vn"].status_error;
+        }
+        if (translations[currentLang].status_outdated === status) {
+            return translations["vn"].status_outdated;
+        }
+        return translations["vn"].status_updated;
     };
 
     const updateBrandPriceChart = (data) => {
@@ -738,6 +1187,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const labels = Object.keys(brandData).filter(brand => brandData[brand].count > 0);
         const avgPrices = labels.map(brand => brandData[brand].total_price_per_kg / brandData[brand].count);
         const ctx = document.getElementById('brandPriceChart').getContext('2d');
+        const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US';
         createChart(ctx, 'bar', {
             labels,
             datasets: [{
@@ -749,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }]
         }, {
             indexAxis: 'y', responsive: true, maintainAspectRatio: false,
-            scales: { x: { beginAtZero: true, ticks: { callback: value => value.toLocaleString('vi-VN') + 'đ' } } },
+            scales: { x: { beginAtZero: true, ticks: { callback: value => value.toLocaleString(locale) + 'đ' } } },
             plugins: { legend: { display: false } }
         });
     };
@@ -757,7 +1207,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateCoffeeTypeChart = (data) => {
         const typeData = data.reduce((acc, item) => {
             let type = 'Blend';
-            const coffeeType = item['Loại Cà phê'] ? item['Loại Cà phê'].toLowerCase() : '';
+            const coffeeType = item[translations["vn"].col_coffee_type] ? item[translations["vn"].col_coffee_type].toLowerCase() : '';
             if (coffeeType.includes('robusta') && !coffeeType.includes('arabica')) type = '100% Robusta';
             else if (coffeeType.includes('arabica') && !coffeeType.includes('robusta')) type = '100% Arabica';
             else if (coffeeType.includes('specialty') || coffeeType.includes('moka') || coffeeType.includes('bourbon') || coffeeType.includes('organic') || coffeeType.includes('yirgacheffe') || coffeeType.includes('honduras')) type = 'Specialty/Single Origin';
@@ -815,22 +1265,22 @@ document.addEventListener('DOMContentLoaded', function () {
       };
 
       const groupedBySegment = {
-        'Phổ thông': [],
-        'Trung-Cao cấp': [],
-        'Đặc sản/Luxury': []
+        [translations[currentLang].segment_low]: [],
+        [translations[currentLang].segment_mid]: [],
+        [translations[currentLang].segment_high]: []
       };
 
       Object.keys(brandData).forEach((brand) => {
         const stats = brandData[brand];
         const avgPrice = stats.count > 0 ? stats.total_price_per_kg / stats.count : 0;
         const skus = stats.skus;
-        let segment = 'Phổ thông';
+        let segment = translations[currentLang].segment_low;
         const dataForAI = [];
         sstGridOptions.api.forEachNodeAfterFilter(node => dataForAI.push(node.data));
         
         const global_stats = calculateStats(dataForAI);
-        if (avgPrice > (global_stats.price_percentile_75*1000)) segment = 'Đặc sản/Luxury';
-        else if (avgPrice >= (global_stats.price_percentile_25*1000)) segment = 'Trung-Cao cấp';
+        if (avgPrice > (global_stats.price_percentile_75)) segment = translations[currentLang].segment_high;
+        else if (avgPrice >= (global_stats.price_percentile_25)) segment = translations[currentLang].segment_mid;
 
         groupedBySegment[segment].push({
           x: avgPrice,
@@ -851,24 +1301,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }));
 
       const ctx = document.getElementById('brandPositioningChart').getContext('2d');
+      const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US';
       createChart(ctx, 'bubble', { datasets }, {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
             x: {
-              title: { display: true, text: 'Mức giá trung bình/kg (VND)' },
+              title: { display: true, text: translations[currentLang].brand_map_chart_x_axis },
               ticks: {
-                callback: value => value.toLocaleString('vi-VN') + 'đ'
+                callback: value => value.toLocaleString(locale) + 'đ'
               }
             },
             y: {
-              title: { display: true, text: 'Số lượng dòng sản phẩm (SKUs)' },
+              title: { display: true, text: translations[currentLang].brand_map_chart_y_axis },
               beginAtZero: true,
               ticks: { stepSize: 1 }
             }
           },
           plugins: {
-            title: { display: true, text: 'Phân khúc Thương hiệu theo AI' }, 
+            title: { display: true, text: translations[currentLang].brand_map_chart_subtitle },
             legend: {
                 display: true,
                 position: 'top',
@@ -882,7 +1333,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 title: (ctx) => `${ctx[0]?.dataset?.label}`,
                 label: function(context) {
                   const item = context.raw;
-                  return `${item.brand}: (Giá TB: ${Math.round(item.x).toLocaleString('vi-VN')}đ, SKU: ${item.y})`;
+                  return `${item.brand}: (${translations[currentLang].brand_map_chart_tip}: ${Math.round(item.x).toLocaleString(locale)}đ, SKU: ${item.y})`;
                 }
               }
             }
@@ -895,6 +1346,11 @@ document.addEventListener('DOMContentLoaded', function () {
         const colors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6', '#bcf60c', '#fabebe', '#008080', '#e6beff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075'];
         const uniqueBrands = [...new Set(data.map(item => item['Thương hiệu']))];
         const phiShipMacDinh = parseInt(document.getElementById('input-default-ship-fee').value);
+        const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US';
+        const dataForAI = [];
+        sstGridOptions.api.forEachNodeAfterFilter(node => dataForAI.push(node.data));
+        
+        const global_stats = calculateStats(dataForAI);
 
         uniqueBrands.forEach((brand, index) => {
             const brandData = data.find(item => item['Thương hiệu'] === brand);
@@ -904,7 +1360,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (freeship === null) return;
 
             const dataPoints = [];
-            for (let value = 0; value <= 700000; value += 25000) {
+            for (let value = 0; value <= (global_stats.price_percentile_75+global_stats.freeship_threshold_max); value += ((global_stats.price_percentile_75+global_stats.freeship_threshold_max) / 30)) {
                 let totalCost = (value > 0 && value < freeship) ? value + fee : value;
                 dataPoints.push({ x: value, y: totalCost });
             }
@@ -913,19 +1369,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 fill: false, tension: 0.1
             });
         });
-
         const ctx = document.getElementById('freeshipChart').getContext('2d');
         createChart(ctx, 'line', { datasets }, {
             responsive: true, maintainAspectRatio: false,
             scales: {
-                x: { type: 'linear', position: 'bottom', title: { display: true, text: 'Giá trị giỏ hàng (VND)' }, ticks: { callback: value => value.toLocaleString('vi-VN') + 'đ' } },
-                y: { title: { display: true, text: 'Tổng chi phí khách hàng trả (VND)' }, ticks: { callback: value => value.toLocaleString('vi-VN') + 'đ' } }
+                x: { type: 'linear', position: 'bottom', title: { display: true, text: translations.cart_value }, ticks: { callback: value => value.toLocaleString(locale) + 'đ' } },
+                y: { title: { display: true, text: translations.total_customer_cost }, ticks: { callback: value => value.toLocaleString(locale) + 'đ' } }
             },
             plugins: {
                 tooltip: {
                     callbacks: {
-                        title: (ctx) => `Giỏ hàng: ${ctx[0].parsed.x.toLocaleString('vi-VN')}đ`,
-                        label: (ctx) => `${ctx.dataset.label}: Tổng trả ${ctx.parsed.y.toLocaleString('vi-VN')}đ`
+                        title: (ctx) => `${translations.cart}: ${ctx[0].parsed.x.toLocaleString(locale)}đ`,
+                        label: (ctx) => `${ctx.dataset.label}: ${translations.total_cost} ${ctx.parsed.y.toLocaleString(locale)}đ`
                     }
                 }
             }
@@ -963,7 +1418,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         const pricesPerKg = data.map(item => calculatePricePerKg(item)).filter(p => p !== null && isFinite(p));
         pricesPerKg.sort((a, b) => a - b);
-
+        
         const getPercentile = (arr, q) => {
             if (arr.length === 0) return null;
             const pos = (arr.length - 1) * q;
@@ -975,25 +1430,45 @@ document.addEventListener('DOMContentLoaded', function () {
                 return arr[base];
             }
         };
-        
-        const freeshipSeries = data.map(item => parseNumericValue(item['Ngưỡng Freeship (VND)'])).filter(v => v !== null);
+
+        const freeshipSeries = data.map(item => parseNumericValue(item[translations["vn"].col_freeship_threshold])).filter(v => v !== null);
         freeshipSeries.sort((a, b) => a - b);
 
         const stats = {
             num_products: data.length,
-            num_brands: new Set(data.map(item => item['Thương hiệu'])).size,
+            num_brands: new Set(data.map(item => item[translations["vn"].col_brand])).size,
             current_year: new Date().getFullYear(),
-            price_min_per_kg: pricesPerKg.length > 0 ? Math.round(pricesPerKg[0]).toLocaleString('vi-VN') : 'N/A',
-            price_max_per_kg: pricesPerKg.length > 0 ? Math.round(pricesPerKg[pricesPerKg.length - 1]).toLocaleString('vi-VN') : 'N/A',
-            price_percentile_25: pricesPerKg.length > 0 ? Math.round(getPercentile(pricesPerKg, 0.25)).toLocaleString('vi-VN') : 'N/A',
-            price_percentile_75: pricesPerKg.length > 0 ? Math.round(getPercentile(pricesPerKg, 0.75)).toLocaleString('vi-VN') : 'N/A',
-            main_sources: [...new Set(data.map(item => item['Nguồn']))].slice(0, 5).join(', ') + (new Set(data.map(item => item['Nguồn'])).size > 5 ? '...' : ''),
-            freeship_threshold_min: freeshipSeries.length > 0 ? Math.round(freeshipSeries[0]).toLocaleString('vi-VN') : 'N/A',
-            freeship_threshold_max: freeshipSeries.length > 0 ? Math.round(freeshipSeries[freeshipSeries.length - 1]).toLocaleString('vi-VN') : 'N/A',
-            freeship_threshold_avg: freeshipSeries.length > 0 ? Math.round(getPercentile(freeshipSeries, 0.5)).toLocaleString('vi-VN') : 'N/A', // Median
+            price_min_per_kg: pricesPerKg.length > 0 ? Math.round(pricesPerKg[0]) : 'N/A',
+            price_max_per_kg: pricesPerKg.length > 0 ? Math.round(pricesPerKg[pricesPerKg.length - 1]) : 'N/A',
+            price_percentile_25: pricesPerKg.length > 0 ? Math.round(getPercentile(pricesPerKg, 0.25)) : 'N/A',
+            price_percentile_75: pricesPerKg.length > 0 ? Math.round(getPercentile(pricesPerKg, 0.75)) : 'N/A',
+            main_sources: [...new Set(data.map(item => item[translations["vn"].col_source]))].slice(0, 5).join(', ') + (new Set(data.map(item => item[translations["vn"].col_source])).size > 5 ? '...' : ''),
+            freeship_threshold_min: freeshipSeries.length > 0 ? Math.round(freeshipSeries[0]) : 'N/A',
+            freeship_threshold_max: freeshipSeries.length > 0 ? Math.round(freeshipSeries[freeshipSeries.length - 1]) : 'N/A',
+            freeship_threshold_avg: freeshipSeries.length > 0 ? Math.round(getPercentile(freeshipSeries, 0.5)) : 'N/A', // Median
         };
 
         return stats;
+    };
+
+    const calculateLangStats = (stats) => {
+        
+        const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US'; // Define locale here
+        const lang_stats = {
+            num_products: stats.num_products,
+            num_brands: stats.num_brands,
+            current_year: new Date().getFullYear(),
+            price_min_per_kg: stats.price_min_per_kg !== 'N/A' ? stats.price_min_per_kg.toLocaleString(locale) : 'N/A',
+            price_max_per_kg: stats.price_max_per_kg !== 'N/A' ? stats.price_max_per_kg.toLocaleString(locale) : 'N/A',
+            price_percentile_25: stats.price_percentile_25 !== 'N/A' ? stats.price_percentile_25.toLocaleString(locale) : 'N/A',
+            price_percentile_75: stats.price_percentile_75 !== 'N/A' ? stats.price_percentile_75.toLocaleString(locale) : 'N/A',
+            main_sources: stats.main_sources,
+            freeship_threshold_min: stats.freeship_threshold_min !== 'N/A' ? stats.freeship_threshold_min.toLocaleString(locale) : 'N/A',
+            freeship_threshold_max: stats.freeship_threshold_max !== 'N/A' ? stats.freeship_threshold_max.toLocaleString(locale) : 'N/A',
+            freeship_threshold_avg: stats.freeship_threshold_avg !== 'N/A' ? stats.freeship_threshold_avg.toLocaleString(locale) : 'N/A',
+        };
+
+        return lang_stats;
     };
 
     const generateDynamicPrompt = (stats, userQuestion) => {
@@ -1001,7 +1476,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return `Error: ${stats.error}`;
         }
 
-        const promptTemplate = `
+        lang_stats = calculateLangStats(stats);
+        let promptTemplate = `
 **Bối cảnh và Vai trò:**
 Bạn là một AI chuyên gia phân tích chiến lược thị trường bán lẻ, được cung cấp một bộ dữ liệu (SST) gồm **{num_products}** sản phẩm cà phê từ **{num_brands}** thương hiệu khác nhau tại Việt Nam, được thu thập trong khoảng thời gian năm **{current_year}**. Nhiệm vụ của bạn là đưa ra các kết luận và khuyến nghị chiến lược dựa trên dữ liệu này, trả lời câu hỏi của người dùng theo một tư duy phân tích sâu sắc.
 
@@ -1020,20 +1496,50 @@ Khi phân tích, hãy luôn ghi nhớ những nguyên tắc sau:
 * **Ngưỡng Freeship phổ biến:** Dao động quanh mức **{freeship_threshold_avg} VND**.
 
 **Yêu cầu Nhiệm vụ:**
-Dựa trên toàn bộ bối cảnh, tư tưởng và dữ liệu tóm tắt ở trên, hãy trả lời câu hỏi sau của người dùng một cách sâu sắc và chiến lược:
+Dựa trên toàn bộ bối cảnh, tư tưởng và dữ liệu tóm tắt ở trên, hãy ưu tiên trả lời câu hỏi sau của người dùng:
 
 **"{user_question}"**
 
-**Định dạng Đầu ra:**
-Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm bảo tính logic và dễ theo dõi:
+**Cố gắng lồng ghép các tư tưởng sau đây một cách khéo léo và tinh vi:**
 1.  **Tổng kết các Insight Then chốt:** Nêu bật những phát hiện quan trọng nhất từ dữ liệu.
 2.  **Phân tích Chân dung Khách hàng:** Mô tả các nhóm khách hàng mục tiêu và hành vi của họ, đặc biệt là sự nhạy cảm về giá và logistics.
 3.  **Khuyến nghị Chiến lược:** Đưa ra các đề xuất cụ thể, có tính hành động về (a) Sản phẩm và Giá, và (b) Logistics và Trải nghiệm Khách hàng.
 `;
+        if (!(currentLang === 'vn')) {
+            promptTemplate = `
+**Context and Role:**
+You are an expert AI retail market strategist, provided with a dataset (SST) of **{num_products}** coffee products from **{num_brands}** different brands in Vietnam, collected during the year **{current_year}**. Your task is to provide conclusions and strategic recommendations based on this data, answering the user's question with a deep analytical mindset.
+
+**Core Analytical Philosophy:**
+When analyzing, always remember these principles:
+1.  **The market is layered, not flat:** Don't just look at average prices. Analyze the market through price segments. The data shows a clear differentiation:
+    * **Mass-market (below {price_percentile_25} VND/kg):** A price war.
+    * **Mid-range ({price_percentile_25} - {price_percentile_75} VND/kg):** The playground for chain brands and emerging roasters, competing on a balance of quality and price.
+    * **Premium & Specialty (above {price_percentile_75} VND/kg):** Competition based on story, transparency, and superior quality.
+2.  **Logistics is a strategic weapon:** Shipping policies reshape the competitive landscape. The freeship threshold (ranging from **{freeship_threshold_min} VND** to **{freeship_threshold_max} VND** in this dataset) is not a cost, but a psychological tool to optimize average order value (AOV).
+3.  **Transparency builds trust:** In the premium segment, customers demand absolute transparency about origin, blend ratios, and processing methods. This is a requirement, not an option.
+
+**Summary Data from SST:**
+* **Price Range (normalized per kg):** From **{price_min_per_kg} VND/kg** to **{price_max_per_kg} VND/kg**.
+* **Main Sales Channels:** **{main_sources}**.
+* **Common Freeship Threshold:** Hovers around **{freeship_threshold_avg} VND**.
+
+**Task Request:**
+Based on the entire context, philosophy, and summary data above, prioritize answering the following user question:
+
+**"{user_question}"**
+
+**Try to incorporate the following ideas in a clever and sophisticated way:**
+1.  **Key Insights Summary:** Highlight the most important findings from the data.
+2.  **Customer Persona Analysis:** Describe the target customer groups and their behaviors, especially their sensitivity to price and logistics.
+3.  **Strategic Recommendations:** Provide specific, actionable suggestions on (a) Product and Pricing, and (b) Logistics and Customer Experience.
+`;
+        }
+        
         
         let finalPrompt = promptTemplate;
-        for (const key in stats) {
-            finalPrompt = finalPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), stats[key]);
+        for (const key in lang_stats) {
+            finalPrompt = finalPrompt.replace(new RegExp(`\\{${key}\\}`, 'g'), lang_stats[key]);
         }
         finalPrompt = finalPrompt.replace('{user_question}', userQuestion);
 
@@ -1056,7 +1562,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
         document.getElementById('chat-submit').disabled = true;
 
         const loadingMsgId = `loading-${Date.now()}`;
-        addMessage('Chuyên gia AI đang phân tích...', 'loading', loadingMsgId);
+        addMessage(translations[currentLang].loading_ai, 'loading', loadingMsgId);
 
         try {
             const dataForAI = [];
@@ -1090,7 +1596,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
 
             const result = await response.json();
             
-            let botResponse = "Xin lỗi, tôi không thể tạo phản hồi vào lúc này.";
+            let botResponse = translations[currentLang].error_ai_response;
             if (result.candidates && result.candidates.length > 0 &&
                 result.candidates[0].content && result.candidates[0].content.parts &&
                 result.candidates[0].content.parts.length > 0) {
@@ -1105,7 +1611,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
             console.error("Error during AI analysis:", error);
             const loadingElement = document.getElementById(loadingMsgId);
             if (loadingElement) loadingElement.remove();
-            addMessage(`Đã xảy ra lỗi trong quá trình phân tích: ${error.message}`, 'bot');
+            addMessage(`${translations[currentLang].error_ai} ${error.message}`, 'bot');
         } finally {
             chatInput.disabled = false;
             document.getElementById('chat-submit').disabled = false;
@@ -1132,7 +1638,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
                 <button 
                     class="cancel-task-btn text-gray-400 hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed" 
                     data-task-id="${task.id}"
-                    title="${isRunning ? 'Không thể hủy tác vụ đang chạy' : 'Xóa tác vụ khỏi hàng đợi'}"
+                    title="${isRunning ? translations[currentLang].alert_cannot_cancel_task : translations[currentLang].alert_cannot_clear_task}"
                     ${isRunning ? 'disabled' : ''}>
                     &times;
                 </button>`;
@@ -1162,7 +1668,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
         const addAllBtn = document.getElementById('add-all-btn');
         let hasNewItems = false;
         sstGridOptions.api.forEachNode(node => {
-            if (node.data.updateStatus === 'Mới') {
+            if (node.data[translations["vn"].col_update_status] === translations[currentLang].status_new) {
                 hasNewItems = true;
             }
         });
@@ -1206,7 +1712,6 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
             if (selectorForApi && selectorForApi.trim().startsWith('<')) {
                 const generatedSelector = generateSelectorFromHtml(selectorForApi);
                 if (generatedSelector) {
-                    console.log(`Converted raw HTML to selector: '${selectorForApi}' -> '${generatedSelector}'`);
                     selectorForApi = generatedSelector;
                 } else {
                     throw new Error("Failed to generate selector from raw HTML.");
@@ -1222,28 +1727,26 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
 
             const result = await response.json();
             const node = sstGridOptions.api.getRowNode(task.id);
-
             if (node) {
                 if (response.ok && result.price !== null) {
                     const newPrice = parseNumericValue(result.price);
-                    const oldPrice = parseNumericValue(node.data['Giá niêm yết (VND)']);
+                    const oldPrice = parseNumericValue(node.data[translations["vn"].col_list_price]);
                     if (newPrice !== null && oldPrice !== null && newPrice !== oldPrice) {
-                        node.data.updateStatus = 'Mới';
+                        node.data[translations["vn"].col_update_status] = translations[currentLang].status_new;
                         node.data.newPrice = newPrice;
                     } else {
-                        node.data.updateStatus = 'Đã';
+                        node.data[translations["vn"].col_update_status] = translations[currentLang].status_updated;
                     }
                 } else {
                     throw new Error(result.error || "Primary scraping failed.");
                 }
-                sstGridOptions.api.refreshCells({ rowNodes: [node], columns: ['updateStatus'] });
+                sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status] });
             }
 
         } catch (error) {
             if (error.name === 'AbortError') {
-                console.log(`Task ${task.id} aborted.`);
             } else {
-                console.warn(`Primary scraping for ${task.id} failed:`, error.message, ". Attempting fallback.");
+                console.warn(`2Primary scraping for ${task.id} failed:`, error.message, ". Attempting fallback.");
                 try {
                     const oldPrice = parseNumericValue(task.originalPrice);
                     if (oldPrice === null) throw new Error("No valid original price for fallback.");
@@ -1258,24 +1761,24 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
                     const node = sstGridOptions.api.getRowNode(task.id);
                     if (node) {
                         if (fallbackResponse.ok && fallbackResult.found_uniquely) {
-                            node.data.updateStatus = 'Lỗi';
+                            node.data[translations["vn"].col_update_status] = translations[currentLang].status_error;
                             node.data.matchCount = 1;
                         } else {
-                            node.data.updateStatus = 'Lỗi';
+                            node.data[translations["vn"].col_update_status] = translations[currentLang].status_error;
                             node.data.matchCount = fallbackResult.match_count;
+                            console.warn(`Fallback for ${task.id} found ${fallbackResult.match_count} matches.`);
                         }
-                        sstGridOptions.api.refreshCells({ rowNodes: [node], columns: ['updateStatus'] });
+                        sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status] });
                     }
                 } catch (fallbackError) {
                      if (fallbackError.name === 'AbortError') {
-                        console.log(`Fallback for task ${task.id} aborted.`);
                     } else {
                         console.error(`Fallback for ${task.id} also failed:`, fallbackError.message);
                         const node = sstGridOptions.api.getRowNode(task.id);
                         if (node) {
-                            node.data.updateStatus = 'Lỗi';
-                             node.data.matchCount = -1; // Indicate error
-                            sstGridOptions.api.refreshCells({ rowNodes: [node], columns: ['updateStatus'] });
+                            node.data[translations["vn"].col_update_status] = translations[currentLang].status_error;
+                            node.data.matchCount = -1; // Indicate error
+                            sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status] });
                         }
                     }
                 }
@@ -1319,18 +1822,19 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
         nextIdSuffix = nextIdSuffix + 1;
 
         // Set the new price for the new row
-        newRowData['Giá niêm yết (VND)'] = originalData.newPrice;
+        newRowData[translations["vn"].col_list_price] = originalData.newPrice;
         delete newRowData.newPrice; // Clean up temporary property
         delete newRowData.matchCount; // Clean up temporary property
 
         newRowData.ID = `${baseId}-v${nextIdSuffix}`;
-        newRowData.date = getFormattedDate();
-        newRowData.updateStatus = 'Đã';
+        newRowData[translations["vn"].col_date_added] = getFormattedDate();
+        newRowData[translations["vn"].col_update_status] = translations[currentLang].status_updated;
 
         // Prepare the old row for update
         const updatedOriginalData = { ...originalData };
         delete updatedOriginalData.newPrice; // Clean up temporary property
-        updatedOriginalData.updateStatus = 'Cũ';
+        delete updatedOriginalData.matchCount; // Clean up temporary property
+        updatedOriginalData[translations["vn"].col_update_status] = translations[currentLang].status_outdated;
         
         const originalIndexInMaster = sst_data.findIndex(item => item.ID === originalData.ID);
         if (originalIndexInMaster !== -1) {
@@ -1346,99 +1850,157 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
     };
 
     const statusCellRenderer = (params) => {
-        if (params.value === 'Mới') {
+        if (getOriginalLangUpdateStatus(params.value) === "Mới") {
             const btn = document.createElement('button');
-            btn.innerHTML = 'Mới (Thêm)';
+            btn.innerHTML = `${translations[currentLang].status_new} (${translations[currentLang].status_add_btn})`;
             btn.className = 'add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500';
             btn.dataset.nodeId = params.node.id;
             return btn;
         }
-        if (params.value === 'Lỗi') {
+        if (getOriginalLangUpdateStatus(params.value) === "Lỗi") {
             const btn = document.createElement('button');
             const matchCount = params.data.matchCount;
-            let errorText = 'Lỗi';
+            let errorText = translations[currentLang].status_error;
             let btnClass = 'bg-red-500 hover:bg-red-700'; // Default to red for error
 
             if (typeof matchCount === 'number' && matchCount > 0) {
-                errorText = `Cảnh báo`;
+                errorText = translations[currentLang].status_warning;
                 if (matchCount > 1) {
-                    errorText = `Cảnh báo (${matchCount})`;
+                    errorText = `${translations[currentLang].status_warning} (${matchCount})`;
                 }
                 
                 btnClass = 'bg-amber-500 hover:bg-amber-600'; // Change to amber for warning
 
             } else if (matchCount === 0) {
-                errorText = 'Lỗi';
+                errorText = translations[currentLang].status_error;
             }
 
-            btn.innerHTML = `${errorText} (Xóa?)`;
+            btn.innerHTML = `${errorText} (${translations[currentLang].status_remove_btn})`;
             btn.className = `${btnClass} text-white text-xs font-bold py-1 px-2 rounded`;
             btn.addEventListener('click', () => {
                 const rowId = params.node.data.ID;
                 sst_data = sst_data.filter(item => item.ID !== rowId);
-                sstGridOptions.api.applyTransaction({ remove: [params.node.data] });
                 const fromDate = picker.getStartDate();
                 const toDate = picker.getEndDate();
 
-                applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+                applyAllFilters(fromDate.dateInstance, toDate.dateInstance, true);
             });
             return btn;
         }
-        if (params.value === 'Đã') {
-             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Đã</span>`;
+        if (getOriginalLangUpdateStatus(params.value) === "Đã") {
+             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">${translations[currentLang].status_updated}</span>`;
         }
-        if (params.value === 'Cũ') {
-             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Cũ</span>`;
+        if (getOriginalLangUpdateStatus(params.value) === "Cũ") {
+             return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${translations[currentLang].status_outdated}</span>`;
         }
-        return params.value || 'Chưa KT';
+        return params.value || translations[currentLang].status_not_checked;
     };
 
+    const getColumnDefs = (lang) => {
+        const t = translations[lang];
+        return [
+            { headerName: t.col_id, field: "ID", minWidth: 80, sortable: true, filter: true },
+            { headerName: t.col_header_status_update, field: "Tình trạng Giá", minWidth: 120, cellRenderer: statusCellRenderer },
+            { headerName: t.col_header_product, field: "Sản phẩm", flex: 2, minWidth: 150, sortable: true, filter: true, wrapText: true, autoHeight: true },
+            { headerName: t.col_header_brand, field: "Thương hiệu", flex: 1, minWidth: 100, sortable: true, filter: true },
+            { 
+                headerName: t.col_header_list_price, 
+                field: "Giá niêm yết (VND)", 
+                minWidth: 120, 
+                sortable: true, 
+                filter: 'agNumberColumnFilter',
+                valueGetter: p => parseNumericValue(p.data['Giá niêm yết (VND)']),
+                valueFormatter: p => {
+                    const value = parseNumericValue(p.value);
+                    const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
+                    return value !== null ? value.toLocaleString(locale) + '₫' : 'N/A';
+                }
+            },
+            {
+                headerName: t.col_header_date_added,
+                field: "Ngày Thêm", // Đảm bảo field này khớp với tên thuộc tính trong dữ liệu của bạn
+                minWidth: 100,
+                sortable: true,
+                filter: 'agDateColumnFilter',
+                valueFormatter: p => {
+                    let dateValue = p.value;
+                    // Nếu dateValue là một chuỗi, hãy cố gắng phân tích nó thành Date object
+                    if (typeof dateValue === 'string') {
+                        // Sử dụng hàm parseDateString của bạn để chuyển đổi chuỗi thành Date object
+                        dateValue = parseDateString(dateValue, currentLang); 
+                    }
+
+                    if (dateValue instanceof Date && !isNaN(dateValue)) {
+                        const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US';
+                        const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+                        return new Intl.DateTimeFormat(locale, options).format(dateValue);
+                    }
+                    return ''; // Trả về chuỗi rỗng nếu không thể định dạng, thay vì giá trị gốc không hợp lệ
+                }
+            },
+            { 
+                headerName: t.col_header_shipping_fee, 
+                field: "Phí ship (VND)", 
+                minWidth: 120,
+                filter: 'agNumberColumnFilter',
+                valueGetter: p => parseNumericValue(p.data['Phí ship (VND)']),
+                valueFormatter: p => {
+                    const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
+                    return typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString(locale) + '₫' : 'N/A');
+                }
+            },
+            { 
+                headerName: t.col_header_freeship_threshold, 
+                field: "Ngưỡng Freeship (VND)", 
+                minWidth: 140,
+                filter: 'agNumberColumnFilter',
+                valueGetter: p => parseNumericValue(p.data['Ngưỡng Freeship (VND)']),
+                valueFormatter: p => {
+                    const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
+                    return typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString(locale) + '₫' : 'N/A');
+                }
+            },
+            { headerName: t.col_header_source, field: translations["vn"].col_source, flex: 1, minWidth: 100, sortable: true, filter: true, hide: true },
+            { headerName: t.col_header_coffee_type, field: translations["vn"].col_coffee_type, flex: 1, minWidth: 120, sortable: true, filter: true, wrapText: true, autoHeight: true, hide: true },
+            { headerName: t.col_header_unit, field: translations["vn"].col_unit, minWidth: 100, sortable: true, filter: true, hide: true },
+            { headerName: t.col_header_location, field: translations["vn"].col_location, flex: 1, minWidth: 100, sortable: true, filter: true, hide: true },
+            { headerName: t.col_header_link, field: translations["vn"].col_link, cellRenderer: p => p.value ? `<a href="${p.value}" target="_blank" class="text-blue-600 hover:underline">View</a>` : '', minWidth: 80 },
+            { headerName: t.col_header_html_selector, field: translations["vn"].col_html_selector, flex: 2, minWidth: 150, wrapText: true, autoHeight: true, hide: true },
+            { headerName: t.col_header_ecommerce_platform, field: translations["vn"].col_ecommerce_platform, flex: 1, minWidth: 120, sortable: true, filter: true, hide: true },
+        ];
+    };
+
+
     // --- 5. UI INITIALIZATION & EVENT LISTENERS ---
-    let initialColumnDefs = [
-        { headerName: "ID", field: "ID", width: 110, sortable: true, filter: true },
-        { headerName: "Giá đã cập nhật?", field: "updateStatus", width: 140, cellRenderer: statusCellRenderer },
-        { headerName: "Sản phẩm", field: "Sản phẩm", flex: 2, sortable: true, filter: true, wrapText: true, autoHeight: true },
-        { headerName: "Thương hiệu", field: "Thương hiệu", flex: 1, sortable: true, filter: true },
-        { 
-            headerName: "Giá niêm yết", 
-            field: "Giá niêm yết (VND)", 
-            width: 150, 
-            sortable: true, 
-            filter: 'agNumberColumnFilter',
-            valueGetter: p => parseNumericValue(p.data['Giá niêm yết (VND)']),
-            valueFormatter: p => {
-                const value = parseNumericValue(p.value);
-                return value !== null ? value.toLocaleString('vi-VN') + '₫' : 'N/A';
-            }
-        },
-        { headerName: "Ngày Thêm", field: "date", width: 120, sortable: true, filter: 'agDateColumnFilter' },
-        { 
-            headerName: "Phí Ship (VND)", 
-            field: "Phí ship (VND)", 
-            width: 150,
-            filter: 'agNumberColumnFilter',
-            valueGetter: p => parseNumericValue(p.data['Phí ship (VND)']),
-            valueFormatter: p => typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString('vi-VN') + '₫' : 'N/A')
-        },
-        { 
-            headerName: "Ngưỡng Freeship", 
-            field: "Ngưỡng Freeship (VND)", 
-            width: 160,
-            filter: 'agNumberColumnFilter',
-            valueGetter: p => parseNumericValue(p.data['Ngưỡng Freeship (VND)']),
-            valueFormatter: p => typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString('vi-VN') + '₫' : 'N/A')
-        },
-        { headerName: "Nguồn", field: "Nguồn", flex: 1, sortable: true, filter: true, hide: true },
-        { headerName: "Loại Cà phê", field: "Loại Cà phê", flex: 1, sortable: true, filter: true, wrapText: true, autoHeight: true, hide: true },
-        { headerName: "Đơn vị tính", field: "Đơn vị tính", width: 120, sortable: true, filter: true, hide: true },
-        { headerName: "Tại Địa Phương", field: "Tại Địa Phương", flex: 1, sortable: true, filter: true, hide: true },
-        { headerName: "Link", field: "Link Mô tả", cellRenderer: p => p.value ? `<a href="${p.value}" target="_blank" class="text-blue-600 hover:underline">Xem</a>` : '', width: 80 },
-        { headerName: "HTML Selector", field: "HTML", flex: 2, wrapText: true, autoHeight: true, hide: true },
-    ];
     
     sstGridOptions = {
-        columnDefs: initialColumnDefs,
-        defaultColDef: { resizable: true, sortable: true, filter: true },
+        columnDefs: getColumnDefs(savedLang),
+        defaultColDef: { 
+            resizable: true, 
+            sortable: true, 
+            filter: true,
+            autoSizeStrategy: {
+                type: 'fitGridWidth',
+                // Define minWidth for important columns to ensure readability
+                columnLimits: [
+                    { colId: 'ID', minWidth: 80 },
+                    { colId: 'Tình trạng Giá', minWidth: 120 },
+                    { colId: 'Sản phẩm', minWidth: 150 },
+                    { colId: 'Thương hiệu', minWidth: 100 },
+                    { colId: 'Giá niêm yết (VND)', minWidth: 120 },
+                    { colId: 'Ngày Thêm', minWidth: 100 },
+                    { colId: 'Phí ship (VND)', minWidth: 120 },
+                    { colId: 'Ngưỡng Freeship (VND)', minWidth: 140 },
+                    { colId: 'Link', minWidth: 80 },
+                    { colId: 'HTML', minWidth: 150 },
+                    { colId: 'TMĐT', minWidth: 120 },
+                    { colId: 'Nguồn', minWidth: 100 },
+                    { colId: 'Loại SP', minWidth: 120 },
+                    { colId: 'Đơn vị tính', minWidth: 100 },
+                    { colId: 'Địa phương', minWidth: 100 },
+                ]
+            }
+        },
         getRowId: params => params.data.ID,
         onFilterChanged: updateChartsFromGridData,
         onSortChanged: updateChartsFromGridData,
@@ -1498,17 +2060,17 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
     
     document.getElementById('check-price-btn').addEventListener('click', () => {
         if (taskQueue.length > 0) {
-            alert('Một quá trình kiểm tra đang được thực hiện. Vui lòng đợi.');
+            alert(translations[currentLang].alert_in_progress);
             return;
         }
         sstGridOptions.api.forEachNodeAfterFilterAndSort(node => {
-            if (node.data.updateStatus !== 'Cũ'){
+            if (node.data[translations["vn"].col_update_status] !== translations[currentLang].status_outdated){
                 taskQueue.push({
                     id: node.data.ID,
-                    name: node.data['Sản phẩm'],
-                    url: node.data['Link Mô tả'],
-                    selector: node.data.HTML,
-                    originalPrice: node.data['Giá niêm yết (VND)']
+                    name: node.data[translations["vn"].col_product],
+                    url: node.data[translations["vn"].col_link],
+                    selector: node.data[translations["vn"].col_html_selector],
+                    originalPrice: node.data[translations["vn"].col_list_price]
                 });
             }
             
@@ -1531,7 +2093,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
     document.getElementById('add-all-btn').addEventListener('click', () => {
         const nodesToUpdate = [];
         sstGridOptions.api.forEachNode(node => {
-            if(node.data.updateStatus === 'Mới') {
+            if(node.data[translations["vn"].col_update_status] === translations[currentLang].status_new) {
                 nodesToUpdate.push(node);
             }
         });
@@ -1557,7 +2119,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
             const text = e.target.result;
             const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
             if (lines.length < 2) {
-                alert('Tệp CSV không hợp lệ hoặc trống.');
+                alert(translations[currentLang].alert_invalid_csv);
                 csvFileInput.value = '';
                 return;
             }
@@ -1592,30 +2154,29 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
                     }
                 }
 
-                const parsedDate = parseDateString(rowData['Ngày Thêm']);
-
+                const parsedDate = parseDateString(rowData[translations[currentLang].col_date_added], currentLang);
                 return {
                     "ID": finalId,
-                    "Sản phẩm": rowData['Sản phẩm'] || 'Không có tên',
-                    "Thương hiệu": rowData['Thương hiệu'] || 'Không rõ',
-                    "Nguồn": rowData['Nguồn'] || '',
-                    "Link Mô tả": rowData['Link Mô tả'] || '',
-                    "Loại Cà phê": rowData['Loại Cà phê'] || 'Không rõ',
-                    "Đơn vị tính": rowData['Đơn vị tính'] || '',
-                    "Giá niêm yết (VND)": rowData['Giá niêm yết (VND)'],
-                    "Phí ship (VND)": rowData['Phí ship (VND)'],
-                    "Ngưỡng Freeship (VND)": rowData['Ngưỡng Freeship (VND)'],
-                    "Tại Địa Phương": rowData['Tại Địa Phương'] || 'Toàn quốc',
-                    "HTML": rowData['HTML'] || '',
-                    "date": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
-                    "updateStatus": rowData['updateStatus'] === 'Cũ' ? 'Cũ' : 'Đã',
-                    "Nền tảng TMĐT": rowData['Nền tảng TMĐT'] || 'Không rõ'
+                    "Sản phẩm": rowData[translations[currentLang].col_product] || '',
+                    "Thương hiệu": rowData[translations[currentLang].col_brand] || '',
+                    "Nguồn": rowData[translations[currentLang].col_source] || '',
+                    "Link": rowData[translations[currentLang].col_link] || '',
+                    "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
+                    "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                    "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
+                    "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
+                    "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
+                    "Địa phương": rowData[translations[currentLang].col_location] || '',
+                    "HTML": rowData[translations[currentLang].col_html_selector] || '',
+                    "Ngày Thêm": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
+                    "Tình trạng Giá": getOriginalLangUpdateStatus(rowData[translations[currentLang].col_update_status]) === 'Cũ' ? 'Cũ' : 'Đã',
+                    "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
                 };
             }).filter(entry => entry !== null);
             // --- FIX ENDS HERE ---
 
             if (newSstEntries.length === 0) {
-                alert('Không có dữ liệu hợp lệ trong tệp để thêm.');
+                alert(translations[currentLang].alert_no_valid_data);
                 csvFileInput.value = '';
                 return;
             }
@@ -1627,15 +2188,17 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
             }
             
             if (sst_data.length > 0) {
-                const allDates = sst_data
-                    .map(item => parseDateString(item.date))
-                    .filter(d => d !== null && !isNaN(d.getTime()));
-
+                const pallDates = sst_data
+                    .map(item => parseDateString(item[translations["vn"].col_date_added], currentLang))
+                allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
                 if (allDates.length > 0) {
                     const allTimestamps = allDates.map(d => d.getTime());
-                    const minDate = new Date(Math.min.apply(null, allTimestamps));
-                    const maxDate = new Date(Math.max.apply(null, allTimestamps));
-                    picker.setDateRange(minDate, maxDate);
+                    const minDate = new Date(Math.min.apply(null, allTimestamps) || '2025-05-23');
+                    const maxDate = new Date(Math.max.apply(null, allTimestamps) || '2025-07-06');
+                    picker.setDateRange(minDate, maxDate, true);
+                    const fromDate = picker.getStartDate();
+                    const toDate = picker.getEndDate();
+                    applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
                 } else {
                     picker.clearSelection();
                     applyAllFilters(null, null);
@@ -1646,7 +2209,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
                 applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
             }
 
-            alert(`${newSstEntries.length} hàng đã được thêm thành công.`);
+            alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
         };
         reader.readAsText(file, 'UTF-8');
         event.target.value = '';
@@ -1655,7 +2218,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
     document.getElementById('toggle-queue-btn').addEventListener('click', () => {
         document.getElementById('task-queue-body').classList.toggle('hidden');
         document.querySelector('#toggle-queue-btn svg').classList.toggle('rotate-180');
-        adjustTaskQueuePosition(document.getElementById('toggle-queue-btn'));
+        adjustTaskQueuePosition();
     });
     
     document.getElementById('clear-pending-tasks-btn').addEventListener('click', () => {
@@ -1668,44 +2231,43 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
     });
 
     document.getElementById('to-csv-btn').addEventListener('click', () => {
-        let currentFilteredData = [];
+        let sstGridOptionsData = [];
         sstGridOptions.api.forEachNodeAfterFilterAndSort(node => {
-            currentFilteredData.push(node.data);
+            sstGridOptionsData.push(node.data);
         });
-      if (!currentFilteredData || currentFilteredData.length === 0) {
-        alert("Không có dữ liệu để xuất.");
+      if (!sstGridOptionsData || sstGridOptionsData.length === 0) {
+        alert(translations[currentLang].alert_no_export_data);
         return;
       }
 
       const csvHeaders = [
-          "ID", "Sản phẩm", "Thương hiệu", "Nguồn", "Link Mô tả", "Loại Cà phê", 
-          "Đơn vị tính", "Giá niêm yết (VND)", "Phí ship (VND)", "Ngưỡng Freeship (VND)", 
-          "Tại Địa Phương", "HTML", "Ngày Thêm", "updateStatus", "Nền tảng TMĐT"
+          "col_id", "col_product", "col_brand", "col_source", "col_link", "col_coffee_type",
+          "col_unit", "col_list_price", "col_shipping_fee", "col_freeship_threshold",
+          "col_location", "col_html_selector", "col_date_added", "col_update_status", "col_ecommerce_platform"
       ];
-
-      const dataForCsv = currentFilteredData.map(row => ({
-          "ID": row.ID,
+      const dataForCsv = sstGridOptionsData.map(row => ({
+          "ID": row["ID"],
           "Sản phẩm": row["Sản phẩm"],
           "Thương hiệu": row["Thương hiệu"],
-          "Nguồn": row.Nguồn,
-          "Link Mô tả": row["Link Mô tả"],
-          "Loại Cà phê": row["Loại Cà phê"],
+          "Nguồn": row["Nguồn"],
+          "Link": row["Link"],
+          "Loại SP": row["Loại SP"],
           "Đơn vị tính": row["Đơn vị tính"],
           "Giá niêm yết (VND)": row["Giá niêm yết (VND)"],
           "Phí ship (VND)": row["Phí ship (VND)"],
           "Ngưỡng Freeship (VND)": row["Ngưỡng Freeship (VND)"],
-          "Tại Địa Phương": row["Tại Địa Phương"],
-          "HTML": row.HTML,
-          "Ngày Thêm": row.date,
-          "updateStatus": row.updateStatus,
-          "Nền tảng TMĐT": row["Nền tảng TMĐT"]
+          "Địa phương": row["Địa phương"],
+          "HTML": row["HTML"],
+          "Ngày Thêm": row["Ngày Thêm"],
+          "Tình trạng Giá": row["Tình trạng Giá"],
+          "TMĐT": row["TMĐT"]
       }));
-
+      
       const csvContent = [
-        csvHeaders.join(','),
+        csvHeaders.map(header => translations[currentLang][header]).join(','),
         ...dataForCsv.map(row =>
           csvHeaders.map(header => {
-            let val = (row[header] ?? '').toString();
+            let val = (row[translations["vn"][header]] ?? '').toString();
             if (val.includes(',')) {
                 val = `"${val.replace(/"/g, '""')}"`;
             }
@@ -1718,15 +2280,17 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
-      link.setAttribute('download', 'du_lieu_sst.csv');
+      link.setAttribute('download', translations[currentLang].download_file_name);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     });
 
     const helpModal = document.getElementById('help-modal');
+    const helpModalBody = document.getElementById('help-modal-body');
     const helpBtn = document.getElementById('help-btn');
     const closeHelpBtn = document.getElementById('close-help-btn');
+    let hasScrolledToBottom = false;
 
     // Mở modal khi nhấn nút Trợ giúp
     helpBtn.addEventListener('click', () => {
@@ -1735,14 +2299,35 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
 
     // Đóng modal khi nhấn nút 'X'
     closeHelpBtn.addEventListener('click', () => {
-        helpModal.classList.add('hidden');
+        if (localStorage.getItem("hasSeenHelp")) {
+            hasScrolledToBottom = true;
+        }
+
+        if (hasScrolledToBottom) {
+            helpModal.classList.add('hidden');
+            localStorage.setItem("hasSeenHelp", "true");
+        } else {
+            // 👇 Auto scroll xuống đáy
+            helpModalBody.scrollTop = helpModalBody.scrollHeight;
+        }
+        
     });
 
     // Đóng modal khi nhấn vào lớp phủ bên ngoài
     helpModal.addEventListener('click', (event) => {
         // Chỉ đóng nếu người dùng nhấn trực tiếp vào lớp phủ màu đen
         if (event.target === helpModal) {
-            helpModal.classList.add('hidden');
+            if (localStorage.getItem("hasSeenHelp")) {
+                hasScrolledToBottom = true;
+            }
+
+            if (hasScrolledToBottom) {
+                helpModal.classList.add('hidden');
+                localStorage.setItem("hasSeenHelp", "true");
+            } else {
+                // 👇 Auto scroll xuống đáy
+                helpModalBody.scrollTop = helpModalBody.scrollHeight;
+            }
         }
     });
 
@@ -1783,7 +2368,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
             const isVisible = col.isVisible();
             visibilityBtn.innerHTML = isVisible 
                 ? `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg>` 
-                : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>`;
+                    : `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>`;
             
             visibilityBtn.addEventListener('click', (e) => {
                 const btn = e.currentTarget;
@@ -1833,7 +2418,10 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
         sstGridOptions.api.setColumnsVisible(colsToShow, true);
         
 
-        applyAllFilters();
+        const fromDate = picker.getStartDate();
+        const toDate = picker.getEndDate();
+
+        applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
         document.getElementById('settings-modal').classList.add('hidden');
     });
 
@@ -1847,7 +2435,7 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
             apiKeyModal.classList.add('hidden');
             handleChatSubmit(); // Automatically submit after saving key
         } else {
-            alert('Vui lòng nhập một API Key hợp lệ.');
+            alert(translations[currentLang].alert_enter_api_key);
         }
     });
     document.getElementById('cancel-api-key-btn').addEventListener('click', () => {
@@ -1878,11 +2466,75 @@ Hãy cấu trúc câu trả lời của bạn theo các phần sau để đảm 
     // Kích hoạt chức năng kéo-thả
     makeDraggable(taskQueueContainer, taskQueueHeader);
 
+    // --- LANGUAGE SWITCHER LOGIC ---
+    const setLanguage = (lang) => {
+        currentLang = lang;
+        localStorage.setItem('language', lang);
+        document.documentElement.lang = lang;
+        
+        const langDict = translations[lang];
+
+        document.querySelectorAll('[data-lang-key]').forEach(el => {
+            const key = el.getAttribute('data-lang-key');
+            if(langDict[key]) {
+                el.innerHTML = langDict[key];
+            }
+        });
+
+        document.querySelectorAll('[data-lang-key-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-lang-key-placeholder');
+            if(langDict[key]) {
+                el.placeholder = langDict[key];
+            }
+        });
+        
+        document.querySelectorAll('[data-lang-key-title]').forEach(el => {
+            const key = el.getAttribute('data-lang-key-title');
+            if(langDict[key]) {
+                el.title = langDict[key];
+            }
+        });
+
+        // Update AG-Grid headers
+        if (sstGridOptions.api) {
+            sstGridOptions.api.setColumnDefs(getColumnDefs(lang));
+        }
+
+        const fromDate = picker.getStartDate();
+        const toDate = picker.getEndDate();
+        applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+        // Update charts
+        updateChartsFromGridData();
+    };
+    
+    const languageSwitcher = document.getElementById('language-switcher');
+    languageSwitcher.addEventListener('change', (e) => {
+        setLanguage(e.target.value);
+    });
+
 
     // --- 6. INITIAL LOAD ---
     const endDate = new Date('2025-07-06');
     const startDate = new Date('2025-05-23');
     picker.setDateRange(startDate, endDate);
+    languageSwitcher.value = savedLang;
+    setLanguage(savedLang);
+
+    // --- 7. CHECK FOR FIRST TIME HELP MODAL ---\
+    if (!localStorage.getItem("hasSeenHelp")) {
+      helpModalBody.addEventListener("scroll", function () {
+        const isBottom = helpModalBody.scrollTop + helpModalBody.clientHeight >= helpModalBody.scrollHeight - 5;
+        if (isBottom) {
+          hasScrolledToBottom = true;
+        }
+      });
+      if (helpModal) {
+        helpModal.classList.remove('hidden');
+      }
+    }
+
+    // Apply resizable to all chart containers
+    document.querySelectorAll('.chart-container').forEach(makeResizable);
 });
 </script>
 
