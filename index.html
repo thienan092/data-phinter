@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="vn">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-lang-key="page_title">Hệ Thống Phân Tích Động Thị Trường Cà Phê</title>
+    <title data-lang-key="page_title">Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu "Tìm Kiếm Sâu" (phiên bản dành cho Kệ Hàng Cà Phê Trực Tuyến)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/ag-grid-community@31.3.2/dist/ag-grid-community.min.js"></script>
@@ -222,7 +222,7 @@
 <div class="p-3 bg-white shadow-md z-20"> <!-- Adjusted padding for mobile -->
     <div class="mb-3 flex flex-col md:flex-row justify-between items-center"> <!-- Adjusted margin and flex direction for mobile -->
         <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto mb-2 md:mb-0">
-            <h1 class="text-xl md:text-3xl font-bold text-gray-800 text-center md:text-left" data-lang-key="main_title">Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu "Tìm Kiếm Sâu" (phiên bản dành cho Kệ Hàng Cà Phê Trực Tuyến)</h1>
+            <h1 class="text-xl md:text-3xl font-bold text-gray-800 text-center md:text-left" data-lang-key="main_title">Dữ Liệu Kệ Hàng Cà Phê Trực Tuyến</h1>
             <button id="help-btn" class="ml-0 md:ml-3 text-gray-400 hover:text-blue-600 transition-colors duration-200" data-lang-key-title="user_guide_title">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto md:mx-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -264,10 +264,18 @@
         <div class="mb-3 flex flex-col md:flex-row justify-between items-center space-y-2 md:space-y-0"> <!-- Adjusted margin and flex direction for mobile -->
             <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2 w-full md:w-auto">
                 <button id="add-data-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key="add_data_btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
                     Thêm dữ liệu
                 </button>
                 <button id="to-csv-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key="export_csv_btn">
                     📤 Tạo file CSV
+                </button>
+                <button id="toggle-edit-mode-btn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key="edit_mode_btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
                 </button>
                 <input type="file" id="csv-file-input" class="hidden" accept=".csv">
             </div>
@@ -276,7 +284,7 @@
                     Thêm tất cả thay đổi
                 </button>
                 <button id="check-price-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 disabled:bg-gray-400 disabled:cursor-not-allowed w-full md:w-auto" data-lang-key="check_price_updates_btn">
-                    Kiểm tra cập nhật giá
+                    Kiểm tra/Cập nhật Giá
                 </button>
                  <button id="settings-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold p-2 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key-title="settings_btn_title">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -456,6 +464,9 @@
                             <li data-lang-key="help_sst_functions_4_1"><strong>New:</strong> The price has changed. Click the button to create a new version with the updated price.</li>
                             <li data-lang-key="help_sst_functions_4_2"><strong>Warning (number):</strong> The price was not found by scraping with the selector (the "HTML" column), but more than one match for the old price was found in the data row. The selector needs to be updated for successful scraping.</li>
                             <li data-lang-key="help_sst_functions_4_3"><strong>Error:</strong> The price was not found by scraping with the selector (the "HTML" column) and no match for the old price was found in the data row. The URL has likely changed.</li>
+                            <div style="margin-top: 10px; padding: 3px; text-align: center; background-color: #fffbe6; border: 1px solid #a0a0e8; border-radius: 3px; color: #7151ef; font-size: 14px;">
+                                <span data-lang-key="help_sst_functions_4_note"><i><strong>Note:</strong> Although the price statuses of the session will be saved when saving to a csv file, when opening the file, the application will assume that the \"Error\" statuses of the previous session have been reviewed and will be labeled as "Done", so there will only be two statuses, "Done" and "Old", when starting a new session.</i></span>
+                            </div> 
                         </ul>
                      </li>
                      <li data-lang-key="help_sst_functions_5"><strong>Add All Changes:</strong> Automatically creates a new version for all rows with the status "New".</li>
@@ -490,10 +501,10 @@ document.addEventListener('DOMContentLoaded', function () {
             competitive_analysis_tab: "Competitive Analysis",
             logistics_ops_tab: "Logistics Operations",
             ai_analysis_tab: "AI Analysis",
-            add_data_btn: "Add Data",
+            add_data_btn: "\<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5 inline-block mr-2\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"\>\<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\" /\>\</svg\>Add Data",
             export_csv_btn: "📤 Export to CSV",
             add_all_changes_btn: "Add All Changes",
-            check_price_updates_btn: "Check for Price Updates",
+            check_price_updates_btn: "Verify/Update Price",
             settings_btn_title: "Display & Key Settings",
             avg_price_chart_title: "Average Price Positioning by Brand (VND/kg)",
             coffee_type_chart_title: "Coffee Type Distribution",
@@ -525,12 +536,11 @@ document.addEventListener('DOMContentLoaded', function () {
             api_key_modal_label: "Gemini API Key",
             api_key_modal_cancel_btn: "Cancel",
             api_key_modal_save_btn: "Save",
-            help_modal_title: "FYI",
-            help_intro1: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\"><svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg>Data Phin-ter</a></strong>",
-            help_intro2: "This version is designed to integrate the most basic analysis functions so that non-tech users can standardize and accumulate \"deep search data\" (data obtained through the <a href=\"https://gemini.google/overview/deep-research/?hl=en\" target=\"_blank\">Deep Research</a> function of the Gemini large language model) over time.",
-            help_intro3: "<strong>Version:</strong> Online Shelf Data (speed)",
-            help_intro4: "<strong>Version Number:</strong> v1.0+bs4",
-            help_intro5: "<strong>Topic:</strong> Coffee Market",
+            help_modal_title: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\">Data Phin-ter<svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg></a></strong>",
+            help_intro1: "This version is designed to integrate the most basic analysis functions so that non-tech users can standardize and accumulate \"deep search data\" (data obtained through the <a href=\"https://gemini.google/overview/deep-research/?hl=en\" target=\"_blank\">Deep Research</a> function of the Gemini large language model) over time.",
+            help_intro2: "<strong>Version:</strong> Online Shelf Data (for-speed version)",
+            help_intro3: "<strong>Version Number:</strong> v1.0+bs4",
+            help_intro4: "<strong>Topic:</strong> Coffee Market",
             help_key_components_title: "Key Components",
             help_key_components_1: "<strong>Time Filter:</strong> Allows you to select a time range for analysis. All data and charts on the page will update based on your selection.",
             help_key_components_2_title: "Navigation Tabs:",
@@ -546,11 +556,12 @@ document.addEventListener('DOMContentLoaded', function () {
             help_sst_functions_3_1: "Toggle the visibility of each column in the grid.",
             help_sst_functions_3_2: "Select columns to use as \"keys\" for deduplication. Rows with the same values across all selected columns will be hidden, keeping only the first row according to the current sort order.",
             help_sst_functions_4_title: "Check for Price Updates:",
-            help_sst_functions_4_desc: "Automatically visits the <strong>\"Description Links\"</strong> (the <strong>Link</strong> column) to verify and update the prices for the products, except for products had status <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Old</span>. The status will be updated:",
+            help_sst_functions_4_desc: "Automatically visits the <strong>\"Product Links\"</strong> (the <strong>Link</strong> column) to verify and update the prices for the products, except for products had status <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Old</span>. The status will be updated:",
             help_sst_functions_4_1: "<strong><span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">New</span>:</strong> The price has changed. Click the <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Add?</span> button to create a new version with the updated price.",
-            help_sst_functions_4_2: "<strong><span class=\"bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-2 rounded\">Warning <(number)></span>:</strong> The price was not found by scraping with the selector (the <strong>\"HTML\"</strong> column), but more than one (exact number is displayed in <(number)> and not displayed if it is \"1\") match for the old price was found in the data row. The selector needs to be updated to ensure data accuracy.",
+            help_sst_functions_4_2: "<strong><span class=\"bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-2 rounded\">Warning <(number)></span>:</strong> The price was not found by scraping with the selector (the <strong>\"HTML\"</strong> column), but more than one (exact number is displayed in <strong><i>&lt;(number)&gt;</i></strong> and not displayed if it is <strong><i>1</i></strong>) match for the old price was found in the data row. The selector needs to be updated to ensure data accuracy.",
             help_sst_functions_4_3: "<strong><span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Error</span>:</strong> The price was not found by scraping with the selector (the <strong>\"HTML\"</strong> column) and no match for the old price was found in the data row. The URL has likely changed or is simply incorrect. Click the <span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Remove?</span> button to remove the row completely from the SST data.",
-            help_sst_functions_5: "<strong>Add All Changes:</strong> Automatically creates a new version (of the form \"\<current row ID\>-v\<version number\>\") for all rows with the status <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>.",
+            help_sst_functions_4_note: "<i><strong>Note:</strong> Although the price statuses from the session are saved to the CSV file, when the file is opened, the application will assume that the \"Error\" statuses from the previous session have been reviewed and will be labeled as \"Live\". Thus, there will only be two statuses, \"Live\" and \"Old\", when starting a new session.</i>",
+            help_sst_functions_5: "<strong>Add All Changes:</strong> Automatically creates a new version (of the form <strong><i>&lt;current row ID&gt;-v&lt;version number&gt;</i></strong>) for all rows with the status <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>.",
             help_task_queue_title: "Task Queue",
             help_task_queue_desc: "This queue appears when you run the <strong>\"Check for Price Updates\"</strong> function. It allows you to monitor progress and manage tasks. You can drag, drop, and collapse it to save space.",
             help_support_title: "🎉 Find this application useful?",
@@ -561,7 +572,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_header_product: "Product Name",
             col_header_brand: "Brand Name",
             col_header_list_price: "Listed Price (VND)",
-            col_header_date_added: "Date",
+            col_header_date_added: "Data Date",
             col_header_shipping_fee: "Shipping Fee (VND)",
             col_header_freeship_threshold: "Freeship Threshold (VND)",
             col_header_source: "Citation Source",
@@ -583,7 +594,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_coffee_type: "Product Type",
             col_unit: "Unit",
             col_location: "Location",
-            col_link: "Link",
+            col_link: "Product Link",
             col_html_selector: "HTML",
             col_ecommerce_platform: "E-commerce Platform",
             col_update_status: "Update Status",
@@ -604,6 +615,7 @@ document.addEventListener('DOMContentLoaded', function () {
             alert_enter_api_key: "Please enter a valid API Key.",
             alert_cannot_cancel_task: 'Cannot cancel running task',
             alert_cannot_clear_task: 'Cannot remove task from the queue',
+            alert_lang_detect: "Detected that the current language option does not match the input format. The system decided to try with another language!",
             loading_ai: "AI expert is analyzing...",
             error_ai: "An error occurred during analysis:",
             error_ai_response: "Sorry, I couldn't generate a response at this time.",
@@ -622,10 +634,10 @@ document.addEventListener('DOMContentLoaded', function () {
             competitive_analysis_tab: "Phân tích Cạnh tranh",
             logistics_ops_tab: "Vận hành Logistics",
             ai_analysis_tab: "Phân tích AI",
-            add_data_btn: "Thêm dữ liệu",
+            add_data_btn: "\<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5 inline-block mr-2\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"\>\<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\" /\>\</svg\>Thêm dữ liệu",
             export_csv_btn: "📤 Tạo file CSV",
             add_all_changes_btn: "Thêm tất cả thay đổi",
-            check_price_updates_btn: "Kiểm tra cập nhật giá",
+            check_price_updates_btn: "Kiểm tra/Cập nhật Giá",
             settings_btn_title: "Thiết lập Hiển thị & Khóa",
             avg_price_chart_title: "Định vị Giá Trung bình theo Thương hiệu (VND/kg)",
             coffee_type_chart_title: "Phân bổ Chủng loại Cà phê",
@@ -657,12 +669,11 @@ document.addEventListener('DOMContentLoaded', function () {
             api_key_modal_label: "Gemini API Key",
             api_key_modal_cancel_btn: "Hủy",
             api_key_modal_save_btn: "Lưu",
-            help_modal_title: "Mô tả Chức năng",
-            help_intro1: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\"><svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg>Data Phin-ter</a></strong>",
-            help_intro2: "Giải pháp được thiết kế và tích hợp những chức năng phân tích cơ bản nhất mà một người sử dụng phổ thông có thể sử dụng cho việc chuẩn hóa và tích lũy dữ liệu chất lượng cao, có được thông qua chức năng <a href=\"https://gemini.google/overview/deep-research/?hl=vn\" target=\"_blank\">Deep Research</a> của mô hình ngôn ngữ lớn Gemini",
-            help_intro3: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ửu tiên tốc độ)",
-            help_intro4: "<strong>Số phiên bản:</strong> v1.0+bs4",
-            help_intro5: "<strong>Chủ đề:</strong> Thị Trường Cà Phê",
+            help_modal_title: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\">Data Phin-ter<svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg></a></strong>",
+            help_intro1: "Giải pháp được thiết kế và tích hợp những chức năng phân tích cơ bản nhất mà một người sử dụng phổ thông có thể sử dụng cho việc chuẩn hóa và tích lũy dữ liệu chất lượng cao, có được thông qua chức năng <a href=\"https://gemini.google/overview/deep-research/?hl=vn\" target=\"_blank\">Deep Research</a> của mô hình ngôn ngữ lớn Gemini.",
+            help_intro2: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ưu tiên tốc độ)",
+            help_intro3: "<strong>Số phiên bản:</strong> v1.0+bs4",
+            help_intro4: "<strong>Chủ đề:</strong> Thị Trường Cà Phê",
             help_key_components_title: "Các Thành phần Chính",
             help_key_components_1: "<strong>Lọc theo Thời gian:</strong> Cho phép bạn chọn một khoảng thời gian để phân tích. Toàn bộ dữ liệu và biểu đồ trên trang sẽ được cập nhật theo lựa chọn của bạn.",
             help_key_components_2_title: "Các Tab Điều hướng:",
@@ -677,15 +688,15 @@ document.addEventListener('DOMContentLoaded', function () {
             help_sst_functions_3_title: "Thiết lập Hiển thị & Khóa:",
             help_sst_functions_3_1: "Bật/tắt hiển thị của từng cột trên lưới hiển thị.",
             help_sst_functions_3_2: "Chọn các cột làm \"khóa\" để chống trùng lặp. Các hàng có cùng giá trị trên tất cả các cột đã chọn sẽ bị ẩn đi, chỉ giữ lại hàng đầu tiên theo thứ tự sắp xếp hiện tại.",
-            help_sst_functions_4_title: "Kiểm tra cập nhật giá:",
-            help_sst_functions_4_desc: "Automatically visits the <strong>\"Description Links\"</strong> (the <strong>Link</strong> column) to verify and update the prices for the products, except for products had status <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Old</span>. The status will be updated:",
+            help_sst_functions_4_title: "Kiểm tra/Cập nhật Giá:",
             help_sst_functions_4_desc: "Tự động truy cập vào các <strong>\"Link Mô tả\"</strong> (cột <strong>Link</strong>) để kiểm chứng và cập nhật lại giá cho các sản phẩm, trừ các sản phẩm có nhãn là <span class=\"inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800\">Cũ</span>. Trạng thái sẽ được cập nhật:",
             help_sst_functions_4_1: "<strong><span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>:</strong> Giá đã thay đổi. Nhấn vào nút <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Thêm?</span> để tạo một phiên bản mới với giá đã cập nhật.",
-            help_sst_functions_4_2: "<strong><span class=\"bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-2 rounded\">Cảnh báo <(số)></span>:</strong> Không tìm thấy giá bằng việc scraping với selector (cột <strong>HTML</strong>), nhưng tìm thấy nhiều hơn 1 (số chính xác được hiển thị ở <(số)> và không hiển thị nếu đó là \"1\") kết quả khớp với giá cũ trong hàng dữ liệu. Cần cập nhật lại selector để đảm bảo tính chính xác của dữ liệu.",
+            help_sst_functions_4_2: "<strong><span class=\"bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold py-1 px-2 rounded\">Cảnh báo <(số)></span>:</strong> Không tìm thấy giá bằng việc scraping với selector (cột <strong>HTML</strong>), nhưng tìm thấy nhiều hơn 1 (số chính xác được hiển thị ở <strong><i>&lt;(số)&gt;</i></strong> và không hiển thị nếu đó là <strong><i>1</i></strong>) kết quả khớp với giá cũ trong hàng dữ liệu. Cần cập nhật lại selector để đảm bảo tính chính xác của dữ liệu.",
             help_sst_functions_4_3: "<strong><span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Lỗi</span>:</strong> Không tìm thấy giá bằng việc scraping với selector (cột <strong>HTML</strong>) và cũng không tìm thấy giá khớp với giá cũ trong hàng dữ liệu. Nhiều khả năng URL đã bị thay đổi hoặc được thu thập một cách không chính xác. Nhấn vào nút <span class=\"bg-red-500 hover:bg-red-700 text-white text-xs font-bold py-1 px-2 rounded\">Xóa?</span> để xóa hàng lỗi hoàn toàn khỏi dữ liệu SST.",
-            help_sst_functions_5: "<strong>Thêm tất cả thay đổi:</strong> Tự động tạo phiên bản mới (có dạng \"\<ID của hàng hiện tại\>-v\<số phiên bản\>\") cho tất cả các hàng có trạng thái là <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>.",
+            help_sst_functions_4_note: "<i><strong>Lưu ý:</strong> Mặc dầu các trạng thái về giá của phiên làm việc cũng sẽ được lưu vào file CSV nhưng khi mở file thì ứng dụng sẽ mặc định rằng các trạng thái \"Lỗi\" ở phiên làm việc trước đó đều đã được xem xét và sẽ gán nhãn là \"Đã\". Như vậy, sẽ chỉ có hai trạng thái là \"Đã\" và \"Cũ\" khi bắt đầu một phiên làm việc mới. </i>",
+            help_sst_functions_5: "<strong>Thêm tất cả thay đổi:</strong> Tự động tạo phiên bản mới (có dạng <strong><i>&lt;ID của hàng hiện tại&gt;-v&lt;số phiên bản&gt;</i></strong>) cho tất cả các hàng có trạng thái là <span class=\"add-new-version-btn bg-yellow-400 text-yellow-900 text-xs font-bold py-1 px-2 rounded hover:bg-yellow-500\">Mới</span>.",
             help_task_queue_title: "Hàng đợi Tác vụ",
-            help_task_queue_desc: "Hàng đợi này xuất hiện khi bạn chạy chức năng <strong>\"Kiểm tra cập nhật giá\"</strong>. Nó cho phép bạn theo dõi tiến trình và quản lý các tác vụ. Bạn có thể kéo thả, thu gọn để tiết kiệm không gian.",
+            help_task_queue_desc: "Hàng đợi này xuất hiện khi bạn chạy chức năng <strong>\"Kiểm tra/Cập nhật Giá\"</strong>. Nó cho phép bạn theo dõi tiến trình và quản lý các tác vụ. Bạn có thể kéo thả, thu gọn để tiết kiệm không gian.",
             help_support_title: "🎉 Bạn thấy ứng dụng này hữu ích?",
             help_support_desc: "Hãy <a href=\"https://www.buymeacoffee.com/anlt\" target=\"_blank\" style=\"color: #d48806; font-weight: bold; text-decoration: underline;\">mua cho tôi một ly cà phê</a> để tiếp thêm động lực phát triển ☕.",
             help_support_thanks: "Mọi sự ủng hộ của bạn là nguồn cảm hứng rất lớn. Chân thành cảm ơn 💛",
@@ -737,6 +748,7 @@ document.addEventListener('DOMContentLoaded', function () {
             alert_enter_api_key: "Vui lòng nhập một API Key hợp lệ.",
             alert_cannot_cancel_task: 'Không thể hủy tác vụ đang chạy',
             alert_cannot_clear_task: 'Xóa tác vụ khỏi hàng đợi',
+            alert_lang_detect: "Phát hiện tùy chọn ngôn ngữ hiện tại chưa khớp với định dạng file đầu vào. Hệ thống quyết định thử với ngôn ngữ khác!",
             loading_ai: "Chuyên gia AI đang phân tích...",
             error_ai: "Đã xảy ra lỗi trong quá trình phân tích:",
             error_ai_response: "Xin lỗi, tôi không thể tạo phản hồi vào lúc này.",
@@ -756,11 +768,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let taskQueue = [];
     let avgTaskTime = 15000;
     let completedTaskTimes = [];
-    const savedLang = localStorage.getItem('language') || 'vn';
+    const savedLang = localStorage.getItem('language') || 'en';
     let currentLang = savedLang;
     let sstGridOptions;
     let deduplicationKeys = ["ID"];
     let geminiApiKey = sessionStorage.getItem('geminiApiKey') || null;
+    let isEditMode = false; // New state variable for raw mode
+    let visibilityState = {};
 
     const getFormattedDate = () => {
         const today = new Date();
@@ -925,9 +939,11 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const makeDraggable = (element, handle) => {
-        let active = false;
         let startMouseX, startMouseY;
         let startElemX, startElemY;
+        let active = false;
+        let rafId = null; // Để lưu ID của requestAnimationFrame
+        let newX = 0, newY = 0; // Biến để lưu vị trí mới nhất
 
         handle.addEventListener("mousedown", dragStart, false);
         handle.addEventListener("touchstart", dragStart, false); // Add touch support
@@ -943,16 +959,18 @@ document.addEventListener('DOMContentLoaded', function () {
                 startMouseY = e.clientY;
             }
 
+            // Lấy vị trí hiện tại của phần tử từ transform
             const transformMatrix = new WebKitCSSMatrix(window.getComputedStyle(element).transform);
-            startElemX = transformMatrix.m41;
-            startElemY = transformMatrix.m42;
+            startElemX = transformMatrix.m41; // giá trị translate X
+            startElemY = transformMatrix.m42; // giá trị translate Y
             
             active = true;
 
-            document.addEventListener("mousemove", drag, false);
-            document.addEventListener("mouseup", dragEnd, false);
-            document.addEventListener("touchmove", drag, false); // Add touch support
-            document.addEventListener("touchend", dragEnd, false); // Add touch support
+            // Gán các sự kiện lắng nghe
+            document.addEventListener("mousemove", drag, { passive: true }); // Dùng { passive: true } cho sự kiện cuộn/kéo
+            document.addEventListener("mouseup", dragEnd);
+            document.addEventListener("touchmove", drag, { passive: true }); // Dùng { passive: true }
+            document.addEventListener("touchend", dragEnd);
         }
 
         function drag(e) {
@@ -969,20 +987,43 @@ document.addEventListener('DOMContentLoaded', function () {
                 const deltaX = currentX - startMouseX;
                 const deltaY = currentY - startMouseY;
 
-                const newX = startElemX + deltaX;
-                const newY = startElemY + deltaY;
+                newX = startElemX + deltaX;
+                newY = startElemY + deltaY;
 
-                element.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
+                // Chỉ yêu cầu requestAnimationFrame nếu chưa có một yêu cầu nào đang chờ
+                if (!rafId) {
+                    rafId = requestAnimationFrame(updatePosition);
+                }
             }
+        }
+
+        function updatePosition() {
+            // Áp dụng transform ở đây
+            element.style.transform = `translate3d(${newX}px, ${newY}px, 0)`;
+            rafId = null; // Đặt lại rafId sau khi đã cập nhật
         }
 
         function dragEnd(e) {
             active = false;
-            document.removeEventListener("mousemove", drag, false);
-            document.removeEventListener("mouseup", dragEnd, false);
-            document.removeEventListener("touchmove", drag, false);
-            document.removeEventListener("touchend", dragEnd, false);
-            adjustTaskQueuePosition();
+            // Hủy bỏ bất kỳ requestAnimationFrame đang chờ nào
+            if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+
+            // Gỡ bỏ các sự kiện lắng nghe
+            document.removeEventListener("mousemove", drag);
+            document.removeEventListener("mouseup", dragEnd);
+            document.removeEventListener("touchmove", drag);
+            document.removeEventListener("touchend", dragEnd);
+            
+            // Đảm bảo vị trí cuối cùng được cập nhật nếu có thay đổi nhỏ nào đó chưa được render
+            // Hoặc gọi lại updatePosition nếu bạn muốn đảm bảo vị trí được "chốt" ngay lập tức
+            // Nếu không có vấn đề gì về độ chính xác nhỏ, bạn có thể bỏ qua bước này
+            updatePosition(); 
+
+            // Gọi hàm điều chỉnh vị trí cuối cùng của Task Queue sau khi kéo xong
+            adjustTaskQueuePosition(); 
         }
     };
 
@@ -1142,6 +1183,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const toDate = picker.getEndDate();
         filteredData = filterDataByDateRange(filteredData, fromDate, toDate);
         filteredData = dedupData(filteredData);
+
+        setViewMode();
 
         if (sstGridOptions && sstGridOptions.api) {
             let sstGridOptionsData = [];
@@ -1768,7 +1811,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                             node.data.matchCount = fallbackResult.match_count;
                             console.warn(`Fallback for ${task.id} found ${fallbackResult.match_count} matches.`);
                         }
-                        sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status] });
+                        sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status], force: true });
                     }
                 } catch (fallbackError) {
                      if (fallbackError.name === 'AbortError') {
@@ -1778,7 +1821,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                         if (node) {
                             node.data[translations["vn"].col_update_status] = translations[currentLang].status_error;
                             node.data.matchCount = -1; // Indicate error
-                            sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status] });
+                            sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status], force: true });
                         }
                     }
                 }
@@ -1896,78 +1939,98 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         return params.value || translations[currentLang].status_not_checked;
     };
 
-    const getColumnDefs = (lang) => {
+    const getColumnDefs = (lang, editMode = false) => {
         const t = translations[lang];
-        return [
-            { headerName: t.col_id, field: "ID", minWidth: 80, sortable: true, filter: true },
-            { headerName: t.col_header_status_update, field: "Tình trạng Giá", minWidth: 120, cellRenderer: statusCellRenderer },
-            { headerName: t.col_header_product, field: "Sản phẩm", flex: 2, minWidth: 150, sortable: true, filter: true, wrapText: true, autoHeight: true },
-            { headerName: t.col_header_brand, field: "Thương hiệu", flex: 1, minWidth: 100, sortable: true, filter: true },
+        const columnDefinitions = [
+            { headerName: "ID", field: "ID", minWidth: 80, sortable: true, filter: true, editable: false, hide: !(visibilityState["ID"] || true) },
+            { headerName: t.col_header_status_update, field: "Tình trạng Giá", minWidth: 120, cellRenderer: statusCellRenderer, editable: false, hide: !(visibilityState["Tình trạng Giá"] || true) },
+            { headerName: t.col_header_product, field: "Sản phẩm", flex: 2, minWidth: 150, sortable: true, filter: true, wrapText: true, autoHeight: true, hide: !(visibilityState["Sản phẩm"] || true) },
+            { headerName: t.col_header_brand, field: "Thương hiệu", flex: 1, minWidth: 100, sortable: true, filter: true, hide: !(visibilityState["Thương hiệu"] || true) },
             { 
                 headerName: t.col_header_list_price, 
                 field: "Giá niêm yết (VND)", 
                 minWidth: 120, 
                 sortable: true, 
                 filter: 'agNumberColumnFilter',
-                valueGetter: p => parseNumericValue(p.data['Giá niêm yết (VND)']),
-                valueFormatter: p => {
-                    const value = parseNumericValue(p.value);
-                    const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
-                    return value !== null ? value.toLocaleString(locale) + '₫' : 'N/A';
-                }
+                hide: !(visibilityState["Giá niêm yết (VND)"] || true)
             },
             {
                 headerName: t.col_header_date_added,
-                field: "Ngày Thêm", // Đảm bảo field này khớp với tên thuộc tính trong dữ liệu của bạn
+                field: "Ngày Thêm", 
                 minWidth: 100,
                 sortable: true,
                 filter: 'agDateColumnFilter',
-                valueFormatter: p => {
-                    let dateValue = p.value;
-                    // Nếu dateValue là một chuỗi, hãy cố gắng phân tích nó thành Date object
-                    if (typeof dateValue === 'string') {
-                        // Sử dụng hàm parseDateString của bạn để chuyển đổi chuỗi thành Date object
-                        dateValue = parseDateString(dateValue, currentLang); 
-                    }
-
-                    if (dateValue instanceof Date && !isNaN(dateValue)) {
-                        const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US';
-                        const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
-                        return new Intl.DateTimeFormat(locale, options).format(dateValue);
-                    }
-                    return ''; // Trả về chuỗi rỗng nếu không thể định dạng, thay vì giá trị gốc không hợp lệ
-                }
+                hide: !(visibilityState["Ngày Thêm"] || true)
             },
             { 
                 headerName: t.col_header_shipping_fee, 
                 field: "Phí ship (VND)", 
                 minWidth: 120,
                 filter: 'agNumberColumnFilter',
-                valueGetter: p => parseNumericValue(p.data['Phí ship (VND)']),
-                valueFormatter: p => {
-                    const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
-                    return typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString(locale) + '₫' : 'N/A');
-                }
+                hide: !(visibilityState["Phí ship (VND)"] || true)
             },
             { 
                 headerName: t.col_header_freeship_threshold, 
                 field: "Ngưỡng Freeship (VND)", 
                 minWidth: 140,
                 filter: 'agNumberColumnFilter',
-                valueGetter: p => parseNumericValue(p.data['Ngưỡng Freeship (VND)']),
-                valueFormatter: p => {
-                    const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
-                    return typeof p.value === 'string' ? p.value : (p.value !== null ? p.value.toLocaleString(locale) + '₫' : 'N/A');
-                }
+                hide: !(visibilityState["Ngưỡng Freeship (VND)"] || true)
             },
-            { headerName: t.col_header_source, field: translations["vn"].col_source, flex: 1, minWidth: 100, sortable: true, filter: true, hide: true },
-            { headerName: t.col_header_coffee_type, field: translations["vn"].col_coffee_type, flex: 1, minWidth: 120, sortable: true, filter: true, wrapText: true, autoHeight: true, hide: true },
-            { headerName: t.col_header_unit, field: translations["vn"].col_unit, minWidth: 100, sortable: true, filter: true, hide: true },
-            { headerName: t.col_header_location, field: translations["vn"].col_location, flex: 1, minWidth: 100, sortable: true, filter: true, hide: true },
-            { headerName: t.col_header_link, field: translations["vn"].col_link, cellRenderer: p => p.value ? `<a href="${p.value}" target="_blank" class="text-blue-600 hover:underline">View</a>` : '', minWidth: 80 },
-            { headerName: t.col_header_html_selector, field: translations["vn"].col_html_selector, flex: 2, minWidth: 150, wrapText: true, autoHeight: true, hide: true },
-            { headerName: t.col_header_ecommerce_platform, field: translations["vn"].col_ecommerce_platform, flex: 1, minWidth: 120, sortable: true, filter: true, hide: true },
+            { headerName: t.col_header_source, field: translations["vn"].col_source, flex: 1, minWidth: 100, sortable: true, filter: true, hide: !(visibilityState[translations["vn"].col_source] || false) },
+            { headerName: t.col_header_coffee_type, field: translations["vn"].col_coffee_type, flex: 1, minWidth: 120, sortable: true, filter: true, wrapText: true, autoHeight: true, hide: !(visibilityState[translations["vn"].col_coffee_type] || false) },
+            { headerName: t.col_header_unit, field: translations["vn"].col_unit, minWidth: 100, sortable: true, filter: true, hide: !(visibilityState[translations["vn"].col_unit] || false) },
+            { headerName: t.col_header_location, field: translations["vn"].col_location, flex: 1, minWidth: 100, sortable: true, filter: true, hide: !(visibilityState[translations["vn"].col_location] || false) },
+            { headerName: t.col_header_link, field: translations["vn"].col_link, minWidth: 80, hide: !(visibilityState[translations["vn"].col_link] || true) },
+            { headerName: t.col_header_html_selector, field: translations["vn"].col_html_selector, flex: 2, minWidth: 150, wrapText: true, autoHeight: true, hide: !(visibilityState[translations["vn"].col_html_selector] || false) },
+            { headerName: t.col_header_ecommerce_platform, field: translations["vn"].col_ecommerce_platform, flex: 1, minWidth: 120, sortable: true, filter: true, hide: !(visibilityState[translations["vn"].col_ecommerce_platform] || false) },
         ];
+
+        // Apply raw mode specific settings
+        columnDefinitions.forEach(colDef => {
+            if (colDef.field !== "ID" && colDef.field !== "Tình trạng Giá") {
+                colDef.editable = editMode;
+                if (editMode) {
+                    // Remove formatters and custom renderers in raw mode
+                    delete colDef.valueFormatter;
+                    // For 'Link Mô tả' only, we still want the <a> tag, but no special formatting
+                    if (colDef.field !== translations["vn"].col_link) {
+                        delete colDef.cellRenderer;
+                    }
+                } else {
+                    // Reapply formatters and custom renderers when not in raw mode
+                    if (colDef.field === "Giá niêm yết (VND)") {
+                        colDef.valueFormatter = p => {
+                            const value = parseNumericValue(p.value);
+                            const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
+                            return value !== null ? value.toLocaleString(locale) + '₫' : 'N/A';
+                        };
+                    } else if (colDef.field === "Ngày Thêm") {
+                        colDef.valueFormatter = p => {
+                            let dateValue = p.value;
+                            if (typeof dateValue === 'string') {
+                                dateValue = parseDateString(dateValue, currentLang); 
+                            }
+                            if (dateValue instanceof Date && !isNaN(dateValue)) {
+                                const locale = currentLang === 'vn' ? 'vi-VN' : 'en-US';
+                                const options = { year: 'numeric', month: '2-digit', day: '2-digit' };
+                                return new Intl.DateTimeFormat(locale, options).format(dateValue);
+                            }
+                            return '';
+                        };
+                    } else if (colDef.field === "Phí ship (VND)" || colDef.field === "Ngưỡng Freeship (VND)") {
+                         colDef.valueFormatter = p => {
+                            const value = parseNumericValue(p.value);
+                            const locale = lang === 'vn' ? 'vi-VN' : 'en-US';
+                            return value !== null ? value.toLocaleString(locale) + '₫' : 'N/A';
+                        };
+                    } else if (colDef.field === translations["vn"].col_link) {
+                        colDef.cellRenderer = p => p.value ? `<a href="${p.value}" target="_blank" class="text-blue-600 hover:underline">View</a>` : '';
+                    }
+                }
+            }
+        });
+
+        return columnDefinitions;
     };
 
 
@@ -2110,6 +2173,40 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         csvFileInput.click();
     });
 
+    const detectLanguage = (header) => {
+        currentKeyColumns = [
+            translations[currentLang].col_product,
+            translations[currentLang].col_brand,
+            translations[currentLang].col_list_price,
+            translations[currentLang].col_date_added,
+            translations[currentLang].col_shipping_fee,
+            translations[currentLang].col_freeship_threshold,
+            translations[currentLang].col_source,
+            translations[currentLang].col_coffee_type,
+            translations[currentLang].col_unit,
+            translations[currentLang].col_location,
+            translations[currentLang].col_link,
+            translations[currentLang].col_ecommerce_platform,
+            translations[currentLang].col_update_status
+        ];
+
+        let is_col_exist = false;
+        header.forEach((colName, index) => {
+            if (currentKeyColumns.includes(colName)) {
+                is_col_exist = 1;
+            }
+        });
+
+        if (!is_col_exist) {
+            alert(translations[currentLang].alert_lang_detect);
+            currentLang = (currentLang === "vn") ? "en" : "vn";
+
+            languageSwitcher.value = currentLang;
+            setLanguage(currentLang);
+        }
+    };
+
+
     csvFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
@@ -2125,6 +2222,8 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             }
 
             const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
+            
+            detectLanguage(header);
             
             // --- FIX STARTS HERE ---
             const existingIds = new Set(sst_data.map(item => item.ID));
@@ -2394,7 +2493,6 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     document.getElementById('apply-settings-btn').addEventListener('click', () => {
         const list = document.getElementById('settings-list');
         const newKeys = [];
-        const visibilityState = {};
 
         list.querySelectorAll('label').forEach(label => {
             const checkbox = label.querySelector('input[type="checkbox"]');
@@ -2477,7 +2575,15 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         document.querySelectorAll('[data-lang-key]').forEach(el => {
             const key = el.getAttribute('data-lang-key');
             if(langDict[key]) {
-                el.innerHTML = langDict[key];
+                innerHTML = langDict[key];
+                if (key === "edit_mode_btn") {
+                    if (!isEditMode) {
+                        innerHTML = langDict["edit_mode_btn"];
+                    } else {
+                        innerHTML = langDict["view_mode_btn"];
+                    }
+                }
+                el.innerHTML = innerHTML;
             }
         });
 
@@ -2510,6 +2616,34 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     const languageSwitcher = document.getElementById('language-switcher');
     languageSwitcher.addEventListener('change', (e) => {
         setLanguage(e.target.value);
+    });
+
+    const setViewMode = (is_view=true) => {
+        if (is_view) {
+            // If in Edit Mode, set button to purple and show "Chế độ Chỉnh sửa" with the complex code icon (</>)
+            toggleButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+            toggleButton.classList.add('bg-purple-600', 'hover:bg-purple-700');
+            toggleButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>`;
+        } else {
+            // If in View Mode, set button to green and show "Chế độ Xem" with the simpler code icon (<>)
+            toggleButton.classList.remove('bg-purple-600', 'hover:bg-purple-700');
+            toggleButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            toggleButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 8l-4 4 4 4m10-8l4 4-4 4" />
+            </svg>`;
+        }
+        
+        isEditMode = !is_view;
+        sstGridOptions.api.setColumnDefs(getColumnDefs(currentLang, isEditMode));
+    };
+
+    // --- Edit Mode Toggle ---
+    toggleButton = document.getElementById('toggle-edit-mode-btn');
+    toggleButton.addEventListener('click', () => {
+        setViewMode(isEditMode);
+
     });
 
 
