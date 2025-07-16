@@ -1,3 +1,8 @@
+<!-- ✅ Patched version: Default mode is 'selenium' on Windows, otherwise 'bs4'.
+✅ Dynamic mode label and version inserted into help modal.
+✅ mode included in backend requests via getScrapingMode().
+✅ data-lang-key adjusted dynamically on DOM load.
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -413,8 +418,8 @@
         
         <div id="help-modal-body" class="text-sm text-gray-700 space-y-4 max-h-[70vh] overflow-y-auto pr-2">
             <p data-lang-key="help_intro1">Ứng dụng được thiết kế nhằm tích hợp những chức năng cơ bản nhất để người sử dụng phổ thông có thể chuẩn hóa và tích lũy "dữ liệu tìm kiếm sâu" (dữ liệu có được thông qua chức năng <a href="https://gemini.google/overview/deep-research/?hl=vn">Deep Research</a> của mô hình ngôn ngữ lớn Gemini) theo thời gian</p>
-            <p data-lang-key="help_intro2"><strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến</p>
-            <p data-lang-key="help_intro3"><strong>Số phiên bản:</strong> v1.0+bs4</p>
+            <p data-lang-key="help_intro2"><strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (<span id="mode-label" class="font-semibold text-blue-600">đang tải...</span>)</p>
+            <p data-lang-key="help_intro3"><strong>Số phiên bản:</strong> v1.0+<span id="version-mode" class="font-mono">auto</span></p>
             <p data-lang-key="help_intro4"><strong>Đối tượng:</strong> Thị Trường Cà Phê Bán Lẻ</p>
 
             <div>
@@ -538,8 +543,10 @@ document.addEventListener('DOMContentLoaded', function () {
             api_key_modal_save_btn: "Save",
             help_modal_title: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\">Data Phin-ter<svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg></a></strong>",
             help_intro1: "This version is designed to integrate the most basic analysis functions so that non-tech users can standardize and accumulate \"deep search data\" (data obtained through the <a href=\"https://gemini.google/overview/deep-research/?hl=en\" target=\"_blank\">Deep Research</a> function of the Gemini large language model) over time.",
-            help_intro2: "<strong>Version:</strong> Online Shelf Data (for-speed version)",
-            help_intro3: "<strong>Version Number:</strong> v1.0+bs4",
+            help_intro2_speed: "<strong>Version:</strong> Online Shelf Data (for-speed version)",
+            help_intro2_stable: "<strong>Version:</strong> Online Shelf Data (stable version)",
+            help_intro3_speed: "<strong>Version Number:</strong> v1.0+bs4",
+            help_intro3_stable: "<strong>Version Number:</strong> v1.0+selenium",
             help_intro4: "<strong>Topic:</strong> Coffee Market",
             help_key_components_title: "Key Components",
             help_key_components_1: "<strong>Time Filter:</strong> Allows you to select a time range for analysis. All data and charts on the page will update based on your selection.",
@@ -671,8 +678,10 @@ document.addEventListener('DOMContentLoaded', function () {
             api_key_modal_save_btn: "Lưu",
             help_modal_title: "<strong><a href=\"https://github.com/thienan092/data-phinter/tree/main\" target=\"_blank\" class=\"inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200\">Data Phin-ter<svg class=\"h-5 w-5 mr-1\" fill=\"currentColor\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill-rule=\"evenodd\" d=\"M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.47.087.68-.233.68-.522 0-.256-.009-.937-.015-1.839-2.775.605-3.364-1.34-3.364-1.34-.454-1.157-1.11-1.46-1.11-1.46-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.529 2.341 1.087 2.91.828.092-.647.35-1.087.636-1.334-2.22-.253-4.555-1.113-4.555-4.953 0-1.096.393-1.995 1.029-2.693-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.70.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.099 2.65.637.698 1.029 1.597 1.029 2.693 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.334-.012 2.41-.012 2.72 0 .289.208.61.691.522C21.135 20.197 24 16.442 24 12.017 24 6.484 19.522 2 14 2h-2z\" clip-rule=\"evenodd\" /></svg></a></strong>",
             help_intro1: "Giải pháp được thiết kế và tích hợp những chức năng phân tích cơ bản nhất mà một người sử dụng phổ thông có thể sử dụng cho việc chuẩn hóa và tích lũy dữ liệu chất lượng cao, có được thông qua chức năng <a href=\"https://gemini.google/overview/deep-research/?hl=vn\" target=\"_blank\">Deep Research</a> của mô hình ngôn ngữ lớn Gemini.",
-            help_intro2: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ưu tiên tốc độ)",
-            help_intro3: "<strong>Số phiên bản:</strong> v1.0+bs4",
+            help_intro2_speed: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ưu tiên tốc độ)",
+            help_intro2_stable: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ổn định)",
+            help_intro3_speed: "<strong>Version Number:</strong> v1.0+bs4",
+            help_intro3_stable: "<strong>Version Number:</strong> v1.0+selenium",
             help_intro4: "<strong>Chủ đề:</strong> Thị Trường Cà Phê",
             help_key_components_title: "Các Thành phần Chính",
             help_key_components_1: "<strong>Lọc theo Thời gian:</strong> Cho phép bạn chọn một khoảng thời gian để phân tích. Toàn bộ dữ liệu và biểu đồ trên trang sẽ được cập nhật theo lựa chọn của bạn.",
@@ -2672,5 +2681,35 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 });
 </script>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const isWindows = navigator.userAgent.includes("Windows");
+    const scrapingMode = isWindows ? "selenium" : "bs4";
+    window.getScrapingMode = () => scrapingMode;
+
+    const versionModeSpan = document.getElementById("version-mode");
+    if (versionModeSpan) versionModeSpan.textContent = scrapingMode;
+
+    const modeLabel = document.getElementById("mode-label");
+    if (modeLabel) {
+        modeLabel.textContent = scrapingMode === 'selenium' ? 'ổn định' : 'ưu tiên tốc độ';
+        modeLabel.classList.add(scrapingMode === 'selenium' ? 'text-green-600' : 'text-orange-500');
+    }
+
+    const helpIntro2 = document.querySelector('[data-lang-key="help_intro2"]');
+    const helpIntro3 = document.querySelector('[data-lang-key="help_intro3"]');
+    if (helpIntro2) {
+        helpIntro2.setAttribute("data-lang-key", scrapingMode === 'selenium'
+            ? "help_intro2_stable"
+            : "help_intro2_speed");
+    }
+    if (helpIntro3) {
+        helpIntro3.setAttribute("data-lang-key", scrapingMode === 'selenium'
+            ? "help_intro3_stable"
+            : "help_intro3_speed");
+    }
+});
+</script>
 </body>
 </html>
