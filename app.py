@@ -1,4 +1,7 @@
 import os
+import platform
+
+DEFAULT_MODE = "selenium" if platform.system() == "Windows" else "bs4"
 import re
 import requests
 from flask import Flask, request, jsonify, send_from_directory
@@ -129,7 +132,7 @@ def handle_check_price():
     data = request.get_json()
     url = data.get('url')
     selector = data.get('selector')
-    mode = data.get('mode', 'selenium').lower()  # ✅ Mặc định selenium
+    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định selenium
 
     if not url or not selector:
         return jsonify({"error": "Thiếu URL hoặc bộ chọn"}), 400
@@ -150,7 +153,7 @@ def handle_verify_price():
     data = request.get_json()
     url = data.get('url')
     price = data.get('price')
-    mode = data.get('mode', 'selenium').lower()  # ✅ Mặc định selenium
+    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định selenium
 
     if not url or price is None:
         return jsonify({"error": "Thiếu URL hoặc giá để xác minh"}), 400
@@ -174,6 +177,10 @@ def serve_index():
 @app.route('/<path:path>')
 def serve_static(path):
     return send_from_directory('.', path)
+    
+@app.route('/api/default-mode', methods=['GET'])
+def get_default_mode():
+    return jsonify({"default_mode": DEFAULT_MODE})
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

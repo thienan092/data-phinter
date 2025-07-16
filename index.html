@@ -2684,19 +2684,21 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const isWindows = navigator.userAgent.includes("Windows");
-    const scrapingMode = isWindows ? "selenium" : "bs4";
-    window.getScrapingMode = () => scrapingMode;
-
-    const versionModeSpan = document.getElementById("version-mode");
-    if (versionModeSpan) versionModeSpan.textContent = scrapingMode;
-
-    const modeLabel = document.getElementById("mode-label");
-    if (modeLabel) {
-        modeLabel.textContent = scrapingMode === 'selenium' ? 'ổn định' : 'ưu tiên tốc độ';
+    fetch('/api/default-mode')
+        .then(res => res.json())
+        .then(data => {
+        const scrapingMode = data.default_mode || "bs4";
+        modeLabel = document.getElementById("mode-label");
+        modeLabel.textContent =
+          scrapingMode === "selenium" ? "ổn định" : "ưu tiên tốc độ";
         modeLabel.classList.add(scrapingMode === 'selenium' ? 'text-green-600' : 'text-orange-500');
-    }
-
+        document.getElementById("version-mode").textContent = scrapingMode;
+        })
+    .catch(err => {
+    console.error("Lỗi lấy chế độ mặc định:", err);
+    });
+    
+    scrapingMode = document.getElementById("version-mode").textContent
     const helpIntro2 = document.querySelector('[data-lang-key="help_intro2"]');
     const helpIntro3 = document.querySelector('[data-lang-key="help_intro3"]');
     if (helpIntro2) {
