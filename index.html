@@ -2554,7 +2554,23 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         apiKeyModal.classList.add('hidden');
     });
 
+    radiusInput = document.getElementById('input-radius');
     defaultShipFeeInput = document.getElementById('input-default-ship-fee');
+    
+    radiusInput.addEventListener('change', () => {
+        updateChartsFromGridData();
+    });
+
+    radiusInput.addEventListener('blur', () => {
+        // Nếu giá trị sau khi cắt bỏ khoảng trắng là rỗng...
+        if (radiusInput.value.trim() === '') {
+            // ...thì đặt lại giá trị là 4
+            radiusInput.value = 4;
+
+            // Kích hoạt sự kiện 'input' một cách nhân tạo để biểu đồ cập nhật theo giá trị mới
+            radiusInput.dispatchEvent(new Event('input'));
+        }
+    });
 
     defaultShipFeeInput.addEventListener('change', () => {
         updateChartsFromGridData();
