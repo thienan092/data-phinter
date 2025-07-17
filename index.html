@@ -2317,8 +2317,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             }
             
             if (sst_data.length > 0) {
-                const pallDates = sst_data
-                    .map(item => parseDateString(item[translations["vn"].col_date_added], currentLang))
+                const pallDates = sst_data.map(item => parseDateString(item[translations["vn"].col_date_added], currentLang));
                 allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
                 if (allDates.length > 0) {
                     const allTimestamps = allDates.map(d => d.getTime());
@@ -2734,8 +2733,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             
             alert(`${sst_data[0].ID}`);
             if (sst_data.length > 0) {
-                const pallDates = sst_data
-                    .map(item => parseDateString(item[translations["vn"].col_date_added], currentLang))
+                const pallDates = sst_data.map(item => parseDateString(item[translations["vn"].col_date_added], currentLang));
                 allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
                 if (allDates.length > 0) {
                     const allTimestamps = allDates.map(d => d.getTime());
