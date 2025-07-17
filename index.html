@@ -2714,23 +2714,16 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
     // Apply resizable to all chart containers
     document.querySelectorAll('.chart-container').forEach(makeResizable);
-});
-</script>
-
-
-<script>
-
-document.addEventListener("DOMContentLoaded", function () {
+    
     alert("initialized!!!");
     // Handle messages from parent (index.html)
     window.addEventListener('message', (event) => {
         // Ensure the message is from a trusted origin if deployed publicly
         // if (event.origin !== "YOUR_EXPECTED_ORIGIN") return;
-        alert("listening!!!");
         const { type, payload } = event.data;
 
         if (type === 'SST_DATA_FROM_INDEX') {
-            new_payload_data = payload.data;
+            let new_payload_data = payload.data;
             languageSwitcher.value = "vn";
             sst_data.push(...new_payload_data);
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
@@ -2738,6 +2731,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 sstGridOptions.api.setRowData(currentFilteredData);
             }
             
+            alert(sst_data);
             if (sst_data.length > 0) {
                 const pallDates = sst_data
                     .map(item => parseDateString(item[translations["vn"].col_date_added], currentLang))
@@ -2763,7 +2757,13 @@ document.addEventListener("DOMContentLoaded", function () {
             alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
         }
     });
+});
+</script>
 
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function () {
     fetch('/api/default-mode')
         .then(res => res.json())
         .then(data => {
