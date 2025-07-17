@@ -775,6 +775,22 @@ document.addEventListener('DOMContentLoaded', function () {
     // --- 1. DATA SECTION (SYNCHRONIZED SST) ---
     // Set sst_data to empty as requested for debugging.
     let sst_data = [];
+    // Fixed SST Schema
+    const sstSchema = [
+        { field: "Sản phẩm", headerName: "Sản phẩm" },
+        { field: "Thương hiệu", headerName: "Thương hiệu" },
+        { field: "Giá niêm yết (VND)", headerName: "Giá niêm yết (VND)" },
+        { field: "Ngày Thêm", headerName: "Ngày Thêm" },
+        { field: "Phí ship (VND)", headerName: "Phí ship (VND)" },
+        { field: "Ngưỡng Freeship (VND)", headerName: "Ngưỡng Freeship (VND)" },
+        { field: "Nguồn", headerName: "Nguồn Trích dẫn" },
+        { field: "Loại SP", headerName: "Loại Cà phê" },
+        { field: "Đơn vị tính", headerName: "Đơn vị tính" },
+        { field: "Địa phương", headerName: "Tại Địa phương" },
+        { field: "Link", headerName: "Link Mô tả" },
+        { field: "HTML", headerName: "HTML Selector (Giá)" },
+        { field: "TMĐT", headerName: "Nền tảng TMĐT" }
+    ];
     
     // --- 3. GLOBAL STATE & UTILS ---
     let charts = {};
@@ -2682,7 +2698,6 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     const startDate = new Date('2025-05-23');
     picker.setDateRange(startDate, endDate);
     languageSwitcher.value = savedLang;
-    setLanguage(savedLang);
 
     // --- 7. CHECK FOR FIRST TIME HELP MODAL ---\
     if (!localStorage.getItem("hasSeenHelp")) {
@@ -2704,7 +2719,51 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
 
 <script>
+
 document.addEventListener("DOMContentLoaded", function () {
+    alert("initialized!!!");
+    // Handle messages from parent (index.html)
+    window.addEventListener('message', (event) => {
+        // Ensure the message is from a trusted origin if deployed publicly
+        // if (event.origin !== "YOUR_EXPECTED_ORIGIN") return;
+        alert("listening!!!");
+        const { type, payload } = event.data;
+
+        if (type === 'SST_DATA_FROM_INDEX') {
+            new_payload_data = payload.data;
+            languageSwitcher.value = "vn";
+            sst_data.push(...new_payload_data);
+            currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
+            if (sstGridOptions && sstGridOptions.api) {
+                sstGridOptions.api.setRowData(currentFilteredData);
+            }
+            
+            if (sst_data.length > 0) {
+                const pallDates = sst_data
+                    .map(item => parseDateString(item[translations["vn"].col_date_added], currentLang))
+                allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
+                if (allDates.length > 0) {
+                    const allTimestamps = allDates.map(d => d.getTime());
+                    const minDate = new Date(Math.min.apply(null, allTimestamps) || '2025-05-23');
+                    const maxDate = new Date(Math.max.apply(null, allTimestamps) || '2025-07-06');
+                    picker.setDateRange(minDate, maxDate, true);
+                    const fromDate = picker.getStartDate();
+                    const toDate = picker.getEndDate();
+                    applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+                } else {
+                    picker.clearSelection();
+                    applyAllFilters(null, null);
+                }
+            } else {
+                const fromDate = picker.getStartDate();
+                const toDate = picker.getEndDate();
+                applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+            }
+
+            alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
+        }
+    });
+
     fetch('/api/default-mode')
         .then(res => res.json())
         .then(data => {
@@ -2716,7 +2775,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("version-mode").textContent = scrapingMode;
         })
     .catch(err => {
-    console.error("Lỗi lấy chế độ mặc định:", err);
+        console.error("Lỗi lấy chế độ mặc định:", err);
     });
     
     scrapingMode = document.getElementById("version-mode").textContent
@@ -2733,6 +2792,7 @@ document.addEventListener("DOMContentLoaded", function () {
             : "help_intro3_speed");
     }
 });
+    
 </script>
 </body>
 </html>
