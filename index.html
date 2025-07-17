@@ -2722,6 +2722,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         // if (event.origin !== "YOUR_EXPECTED_ORIGIN") return;
         const { type, payload } = event.data;
 
+        alert("initialized2!!!");
         if (type === 'SST_DATA_FROM_INDEX') {
             let new_payload_data = payload.data;
             languageSwitcher.value = "vn";
@@ -2731,7 +2732,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 sstGridOptions.api.setRowData(currentFilteredData);
             }
             
-            alert(sst_data);
+            alert(`${sst_data[0].ID}`);
             if (sst_data.length > 0) {
                 const pallDates = sst_data
                     .map(item => parseDateString(item[translations["vn"].col_date_added], currentLang))
