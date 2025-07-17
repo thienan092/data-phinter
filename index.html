@@ -2726,12 +2726,13 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             let new_payload_data = payload.data;
             languageSwitcher.value = "vn";
             sst_data.push(...new_payload_data);
+            alert(`${sst_data[0].ID}`);
+            
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
             if (sstGridOptions && sstGridOptions.api) {
                 sstGridOptions.api.setRowData(currentFilteredData);
             }
             
-            alert(`${sst_data[0].ID}`);
             if (sst_data.length > 0) {
                 const pallDates = sst_data.map(item => parseDateString(item[translations["vn"].col_date_added], currentLang));
                 allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
