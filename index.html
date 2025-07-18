@@ -2725,7 +2725,14 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             
             languageSwitcher.value = "vn";
 
-            sst_data.push(...new_payload_data);
+            try {
+                sst_data.push(...new_payload_data);
+                alert(`sst_data đã được cập nhật. Số lượng phần tử: ${sst_data.length}`);
+            } catch (error) {
+                console.error("Lỗi khi push dữ liệu:", error);
+                alert(`Lỗi khi xử lý dữ liệu: ${error.message}`);
+            }
+            
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
             if (sstGridOptions && sstGridOptions.api) {
                 sstGridOptions.api.setRowData(currentFilteredData);
