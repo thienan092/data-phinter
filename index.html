@@ -2714,34 +2714,18 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     // Apply resizable to all chart containers
     document.querySelectorAll('.chart-container').forEach(makeResizable);
     
-    alert("initialized!!!");
     // Handle messages from parent (index.html)
     window.addEventListener('message', (event) => {
         // Ensure the message is from a trusted origin if deployed publicly
         // if (event.origin !== "YOUR_EXPECTED_ORIGIN") return;
         const { type, payload } = event.data;
 
-        alert("initialized2!!!");
         if (type === 'SST_DATA_FROM_INDEX') {
             let new_payload_data = payload.data;
-            // --- Các bước kiểm tra quan trọng ---
-            console.log("Giá trị của new_payload_data:", new_payload_data);
-            console.log("Kiểu của new_payload_data:", typeof new_payload_data);
-            console.log("new_payload_data có phải là mảng không:", Array.isArray(new_payload_data));
-            // --- Hết các bước kiểm tra ---
-
+            
             languageSwitcher.value = "vn";
 
-            try {
-                sst_data.push(...new_payload_data);
-                // Nếu đến được đây, nghĩa là push không gây lỗi.
-                console.log("sst_data sau khi push:", sst_data);
-                alert(`sst_data đã được cập nhật. Số lượng phần tử: ${sst_data.length}`);
-            } catch (error) {
-                console.error("Lỗi khi push dữ liệu:", error);
-                alert(`Lỗi khi xử lý dữ liệu: ${error.message}`);
-            }
-            
+            sst_data.push(...new_payload_data);
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
             if (sstGridOptions && sstGridOptions.api) {
                 sstGridOptions.api.setRowData(currentFilteredData);
