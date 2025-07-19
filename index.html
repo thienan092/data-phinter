@@ -2751,7 +2751,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             detectLanguage(header);
             
             // --- FIX STARTS HERE ---
-            const existingIds = new Set();
+            const existingIds = new Set(sst_data.map(item => item.ID));
             let idCounter = 0;
 
             const newSstEntries = lines.map(line => {
@@ -2777,34 +2777,35 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                         idCounter++;
                     }
                 }
-                
+
+                const parsedDate = parseDateString(rowData[translations[currentLang].col_date_added], currentLang);
                 return {
                     "ID": finalId,
-                    "Product": rowData["Product"] || '',
-                    "Brand": rowData["Brand"] || '',
-                    "Source": rowData["Source"] || '',
-                    "Link": rowData["Link"] || '',
-                    "Product Type": rowData["Product Type"] || '',
-                    "Unit": rowData["Unit"] || '',
-                    "Listed Price (VND)": rowData["Listed Price (VND)"],
-                    "Shipping Fee (VND)": rowData["Shipping Fee (VND)"],
-                    "Freeship Threshold (VND)": rowData["Freeship Threshold (VND)"],
-                    "Location": rowData["Location"] || '',
-                    "HTML": rowData["HTML"] || '',
-                    "Date": '',
-                    "Price Updated?": 'Live',
-                    "E-commerce": rowData["E-commerce"] || ''
+                    "Sản phẩm": rowData[translations[currentLang].col_product] || '',
+                    "Thương hiệu": rowData[translations[currentLang].col_brand] || '',
+                    "Nguồn": rowData[translations[currentLang].col_source] || '',
+                    "Link": rowData[translations[currentLang].col_link] || '',
+                    "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
+                    "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                    "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
+                    "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
+                    "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
+                    "Địa phương": rowData[translations[currentLang].col_location] || '',
+                    "HTML": rowData[translations[currentLang].col_html_selector] || '',
+                    "Ngày Thêm": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
+                    "Tình trạng Giá": getOriginalLangUpdateStatus(rowData[translations[currentLang].col_update_status]) === 'Cũ' ? 'Cũ' : 'Đã',
+                    "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
                 };
             }).filter(entry => entry !== null);
             // --- FIX ENDS HERE ---
 
             if (newSstEntries.length === 0) {
-                alert("no_valid_data");
+                alert(translations[currentLang].alert_no_valid_data);
+                csvFileInput.value = '';
                 return;
             }
 
-            sstData.push(...newSstEntries);
-            
+            sst_data.push(...newSstEntries);
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
             if (sstGridOptions && sstGridOptions.api) {
                 sstGridOptions.api.setRowData(currentFilteredData);
