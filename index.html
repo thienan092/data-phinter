@@ -2721,10 +2721,19 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         const { type, payload } = event.data;
 
         if (type === 'SST_DATA_FROM_INDEX') {
+            function escapeCsv(value) { 
+                if (value === null || value === undefined) {
+                    return '';
+                }
+                let stringValue = String(value); 
+                if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                    return `"${stringValue.replace(/"/g, '""')}"`;
+                }
+                return stringValue;
+            }
+        
             const columnHeaders = payload.columnHeaders;
             const rows = payload.rows;
-            
-            languageSwitcher.value = "en";
             
             let text = columnHeaders.map(escapeCsv).join(',') + '\n';
             rows.forEach(row => {
