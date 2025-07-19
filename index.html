@@ -607,7 +607,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_location: "Location",
             col_link: "Product Link",
             col_html_selector: "HTML",
-            col_ecommerce_platform: "E-commerce Platform",
+            col_ecommerce_platform: "E-commerce",
             col_update_status: "Update Status",
             download_file_name: "sst-en.csv",
             status_add_btn: "Add?",
@@ -2721,11 +2721,80 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         const { type, payload } = event.data;
 
         if (type === 'SST_DATA_FROM_INDEX') {
-            const newSstEntries = payload.data;
+            const columnHeaders = payload.columnHeaders;
+            const rows = payload.rows;
             
-            languageSwitcher.value = "vn";
+            languageSwitcher.value = "en";
+            
+            let text = columnHeaders.map(escapeCsv).join(',') + '\n';
+            rows.forEach(row => {
+                text += row.map(escapeCsv).join(',') + '\n';
+            });
+            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+            if (lines.length < 2) {
+                alert("invalid CSV format.")
+                return;
+            }
 
-            sst_data.push(...newSstEntries);
+            const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
+
+            console.log("header", header);
+            detectLanguage(header);
+            
+            // --- FIX STARTS HERE ---
+            const existingIds = new Set();
+            let idCounter = 0;
+
+            const newSstEntries = lines.map(line => {
+                const values = parseCsvLine(line);
+                if (values.length !== header.length) {
+                    console.warn('Skipping malformed CSV line:', line);
+                    return null;
+                }
+                const rowData = {};
+                header.forEach((colName, index) => {
+                    rowData[colName] = values[index] ? values[index].replace(/"/g, '').trim() : null;
+                });
+                
+                let finalId = rowData['ID'];
+                if (!finalId || finalId.trim() === '') {
+                    while (true) {
+                        const nextId = `ID${String(idCounter).padStart(3, '0')}`;
+                        if (!existingIds.has(nextId)) {
+                            finalId = nextId;
+                            existingIds.add(finalId); // Thêm ID mới vào bộ đệm ngay lập tức
+                            break;
+                        }
+                        idCounter++;
+                    }
+                }
+                
+                return {
+                    "ID": finalId,
+                    "Product": rowData["Product"] || '',
+                    "Brand": rowData["Brand"] || '',
+                    "Source": rowData["Source"] || '',
+                    "Link": rowData["Link"] || '',
+                    "Product Type": rowData["Product Type"] || '',
+                    "Unit": rowData["Unit"] || '',
+                    "Listed Price (VND)": rowData["Listed Price (VND)"],
+                    "Shipping Fee (VND)": rowData["Shipping Fee (VND)"],
+                    "Freeship Threshold (VND)": rowData["Freeship Threshold (VND)"],
+                    "Location": rowData["Location"] || '',
+                    "HTML": rowData["HTML"] || '',
+                    "Date": '',
+                    "Price Updated?": 'Live',
+                    "E-commerce": rowData["E-commerce"] || ''
+                };
+            }).filter(entry => entry !== null);
+            // --- FIX ENDS HERE ---
+
+            if (newSstEntries.length === 0) {
+                alert("no_valid_data");
+                return;
+            }
+
+            sstData.push(...newSstEntries);
             
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
             if (sstGridOptions && sstGridOptions.api) {
