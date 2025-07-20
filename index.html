@@ -1049,17 +1049,21 @@ document.addEventListener('DOMContentLoaded', function () {
             throw new Error(translations[currentLang].alert_enter_api_key);
         }
 
+        console.log("standardizeCsvHeadersWithGemini");
+        console.log("standardizeCsvHeadersWithGemini", JSON.stringify(columnSemantics));
+        console.log("standardizeCsvHeadersWithGemini", columnSemantics);
         let semanticDetails = '';
-        if (columnSemantics && columnSemantics.length > 0) {
-            semanticDetails = `
-            For better understanding, here are detailed semantics for some of the standard fields:
-            ${columnSemantics.map(sem => {
+        let temp = columnSemantics.map(sem => {
                 let detail = `- Field "${sem.original_name}": ${sem.description} (Expected format: ${sem.expected_format}). Typical values: ${sem.typical_values.join(', ')}.`;
                 if (sem.value_mapping && sem.value_mapping.length > 0) {
                     detail += ` Categorical mapping: ${sem.value_mapping.map(vm => `${vm.category_name} (keywords: ${vm.keywords.join(', ')})`).join('; ')}.`;
                 }
                 return detail;
-            }).join('\n')}
+            }).join('\n');
+        if (columnSemantics && columnSemantics.length > 0) {
+            semanticDetails = `
+            For better understanding, here are detailed semantics for some of the standard fields:
+            ${temp}
             `;
         }
 
@@ -3144,6 +3148,14 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     // Apply resizable to all chart containers
     document.querySelectorAll('.chart-container').forEach(makeResizable);
     
+    
+});
+</script>
+
+
+<script type="module">
+
+document.addEventListener("DOMContentLoaded", function () {
     // Handle messages from parent (index.html)
     window.addEventListener('message', async (event) => {
         // Ensure the message is from a trusted origin if deployed publicly
@@ -3236,7 +3248,6 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     }
                 }
 
-                const parsedDate = parseDateString(rowData[translations[currentLang].col_date_added], currentLang);
                 return {
                     "ID": finalId,
                     "Sản phẩm": rowData[translations[currentLang].col_product] || '',
@@ -3250,10 +3261,12 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
                     "Địa phương": rowData[translations[currentLang].col_location] || '',
                     "HTML": rowData[translations[currentLang].col_html_selector] || '',
-                    "Ngày Thêm": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
-                    "Tình trạng Giá": getOriginalLangUpdateStatus(rowData[translations[currentLang].col_update_status]) === 'Cũ' ? 'Cũ' : 'Đã',
+                    "Ngày Thêm": getFormattedDate(),
+                    "Tình trạng Giá": 'Đã',
                     "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
                 };
+                let un = 0;
+                un = un+1;
             }).filter(entry => entry !== null);
             // --- FIX ENDS HERE ---
 
@@ -3297,13 +3310,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
         }
     });
-});
-</script>
-
-
-<script>
-
-document.addEventListener("DOMContentLoaded", function () {
+    
     fetch('/api/default-mode')
         .then(res => res.json())
         .then(data => {
