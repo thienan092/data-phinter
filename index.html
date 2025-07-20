@@ -986,7 +986,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // Data Processing Function (made global for accessibility)
-    processCategoricalData = async (rawData, columnSemantics) => {
+    const processCategoricalData = async (rawData, columnSemantics) => {
         // Make a deep copy to avoid modifying rawData directly
         const processedData = JSON.parse(JSON.stringify(rawData));
 
