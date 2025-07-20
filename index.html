@@ -1017,9 +1017,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return processedData; // No product types to categorize
         }
 
-        let categorizationMap = {};
         try {
-            categorizationMap = await getGeminiCategorization(uniqueRawProductTypes, productTypeSemantic);
+            const categorizationMap = await getGeminiCategorization(uniqueRawProductTypes, productTypeSemantic);
+            // Apply the categorization from Gemini
+            processedData.forEach(item => {
+                const originalValue = item[productTypeSemantic.original_name] ? String(item[productTypeSemantic.original_name]).toLowerCase() : '';
+                item[productTypeSemantic.original_name] = categorizationMap[originalValue] || 'Other'; // Default to 'Other' if no mapping found
+            });
         } catch (error) {
             console.error("Lỗi khi lấy phân loại từ Gemini:", error);
             // Fallback to default string matching if AI categorization fails
@@ -1034,11 +1038,7 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         }
 
-        // Apply the categorization from Gemini
-        processedData.forEach(item => {
-            const originalValue = item[productTypeSemantic.original_name] ? String(item[productTypeSemantic.original_name]).toLowerCase() : '';
-            item[productTypeSemantic.original_name] = categorizationMap[originalValue] || 'Other'; // Default to 'Other' if no mapping found
-        });
+        
 
         return processedData;
     };
