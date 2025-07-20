@@ -1044,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     
     // NEW FUNCTION: Standardize CSV Headers using Gemini
-    const standardizeCsvHeadersWithGemini = async (rawHeaders, standardFields, columnSemantics) => { // Added columnSemantics parameter
+    const standardizeCsvHeadersWithGemini = (rawHeaders, standardFields, columnSemantics) => { // Added columnSemantics parameter
         if (!geminiApiKey) {
             throw new Error(translations[currentLang].alert_enter_api_key);
         }
