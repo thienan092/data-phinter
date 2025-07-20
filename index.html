@@ -1050,13 +1050,18 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         console.log("standardizeCsvHeadersWithGemini");
+        console.log("standardizeCsvHeadersWithGemini", standardFields);
         console.log("standardizeCsvHeadersWithGemini", JSON.stringify(columnSemantics));
         console.log("standardizeCsvHeadersWithGemini", columnSemantics);
         let semanticDetails = '';
         let temp = columnSemantics.map(sem => {
-                let detail = `- Field "${sem.original_name}": ${sem.description} (Expected format: ${sem.expected_format}). Typical values: ${sem.typical_values.join(', ')}.`;
-                if (sem.value_mapping && sem.value_mapping.length > 0) {
-                    detail += ` Categorical mapping: ${sem.value_mapping.map(vm => `${vm.category_name} (keywords: ${vm.keywords.join(', ')})`).join('; ')}.`;
+                let original_name = sem.original_name || [];
+                let description = sem.description || '';
+                let expected_format = sem.expected_format || '';
+                let value_mapping = sem.value_mapping || [];
+                let detail = `- Field "${original_name}": ${description} (Expected format: ${expected_format}). Typical values: ${sem.typical_values.join(', ')}.`;
+                if (value_mapping && value_mapping.length > 0) {
+                    detail += ` Categorical mapping: ${value_mapping.map(vm => `${vm.category_name} (keywords: ${vm.keywords.join(', ')})`).join('; ')}.`;
                 }
                 return detail;
             }).join('\n');
