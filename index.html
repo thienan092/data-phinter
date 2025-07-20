@@ -9,6 +9,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-lang-key="page_title">Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu "Tìm Kiếm Sâu" (phiên bản dành cho Kệ Hàng Cà Phê Trực Tuyến)</title>
+    <!-- ICON PHIN CÀ PHÊ ĐỘNG CHO FAVICON -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg width='64' height='64' viewBox='0 0 64 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cstyle%3E.steam%7Bstroke:%236b7280;stroke-width:3;stroke-linecap:round;animation:rise 3s infinite ease-in-out;opacity:0;%7D@keyframes rise%7B0%25%7Btransform:translateY(0);opacity:0;%7D40%25%7Bopacity:1;%7D80%25%7Btransform:translateY(-18px);opacity:0;%7D100%25%7Btransform:translateY(-18px);opacity:0;%7D%7D.steam1%7Banimation-delay:0s;%7D.steam2%7Banimation-delay:1s;%7D.steam3%7Banimation-delay:2s;%7D%3C/style%3E%3Cpath d='M14 28 L50 28 L48 50 L16 50 Z' fill='%23374151' /%3E%3Crect x='12' y='24' width='40' height='4' rx='2' fill='%234b5563' /%3E%3Crect x='28' y='16' width='8' height='8' rx='2' fill='%236b7280' /%3E%3Crect x='10' y='50' width='44' height='4' rx='2' fill='%234b5563' /%3E%3Cpath class='steam steam1' d='M24 22 Q 28 16, 32 22' fill='none' /%3E%3Cpath class='steam steam2' d='M32 22 Q 36 16, 40 22' fill='none' /%3E%3Cpath class='steam steam3' d='M28 20 Q 32 14, 36 20' fill='none' /%3E%3C/svg%3E">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://unpkg.com/ag-grid-community@31.3.2/dist/ag-grid-community.min.js"></script>
@@ -593,8 +596,6 @@ document.addEventListener('DOMContentLoaded', function () {
             col_header_link: "Product Link",
             col_header_html_selector: "HTML Selector (Price)",
             col_header_ecommerce_platform: "E-commerce Platform",
-            col_header_update_status: "Update Status",
-            col_status_update: "Price Updated?",
             col_product: "Product",
             col_brand: "Brand",
             col_list_price: "Listed Price (VND)",
@@ -633,7 +634,8 @@ document.addEventListener('DOMContentLoaded', function () {
             cart_value: 'Cart Value (VND)',
             total_customer_cost: 'Total Customer Cost (VND)',
             cart: 'Cart',
-            total_cost: 'Total Cost'
+            total_cost: 'Total Cost',
+            alert_header_standardization_error: "CSV header standardization error:" // New translation key
         },
         vn: {
             page_title: "Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu \"Tìm Kiếm Sâu\" (bản Kệ Hàng Cà Phê Trực Tuyến)",
@@ -728,8 +730,6 @@ document.addEventListener('DOMContentLoaded', function () {
             col_header_link: "Link Mô tả",
             col_header_html_selector: "HTML Selector (Giá)",
             col_header_ecommerce_platform: "Nền tảng TMĐT",
-            col_header_update_status: "Tình trạng Giá",
-            col_status_update: "Giá đã cập nhật?",
             col_product: "Sản phẩm",
             col_brand: "Thương hiệu",
             col_list_price: "Giá niêm yết (VND)",
@@ -768,7 +768,8 @@ document.addEventListener('DOMContentLoaded', function () {
             cart_value: 'Giá trị giỏ hàng (VND)',
             total_customer_cost: 'Tổng chi phí khách hàng trả (VND)',
             cart: 'Giỏ hàng',
-            total_cost: 'Tổng trả'
+            total_cost: 'Tổng trả',
+            alert_header_standardization_error: "Lỗi chuẩn hóa tiêu đề CSV:" // New translation key
         }
     };
     
@@ -804,6 +805,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let geminiApiKey = sessionStorage.getItem('geminiApiKey') || null;
     let isEditMode = false; // New state variable for raw mode
     let visibilityState = {};
+    let columnSemantics = []; // Explicitly initialize as an empty array globally
 
     const getFormattedDate = () => {
         const today = new Date();
@@ -892,6 +894,264 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         result.push(current);
         return result;
+    };
+    
+    /**
+     * Calls Gemini API to categorize raw product type values.
+     * @param {string[]} rawProductTypes - Array of unique raw product type strings.
+     * @param {object} productTypeSemantic - The semantic object for "Product Type" from columnSemantics.
+     * @returns {Promise<Object.<string, string>>} A promise that resolves to an object mapping original_value to categorized_value.
+     */
+    const getGeminiCategorization = async (rawProductTypes, productTypeSemantic) => {
+        if (!geminiApiKey) {
+            throw new Error(translations[currentLang].alert_enter_api_key);
+        }
+
+        const categories = productTypeSemantic.value_mapping.map(m => m.category_name);
+        const prompt = `
+        Bạn là một chuyên gia phân loại sản phẩm. Tôi sẽ cung cấp cho bạn một danh sách các "loại sản phẩm" thô và một danh sách các "danh mục" chuẩn hóa.
+        Nhiệm vụ của bạn là phân loại mỗi "loại sản phẩm" thô vào một trong các "danh mục" chuẩn hóa đã cho.
+        Nếu một "loại sản phẩm" thô không khớp rõ ràng với bất kỳ danh mục nào, hãy phân loại nó là "Khác".
+
+        Các danh mục chuẩn hóa có sẵn: ${categories.join(', ')}.
+
+        Dưới đây là các "loại sản phẩm" thô cần phân loại:
+        ${rawProductTypes.map(type => `- ${type}`).join('\n')}
+
+        Vui lòng trả về kết quả dưới dạng một mảng JSON, mỗi đối tượng chứa "original_value" và "categorized_value".
+        Ví dụ:
+        [
+          { "original_value": "cà phê robusta nguyên hạt", "categorized_value": "100% Robusta" },
+          { "original_value": "arabica rang xay", "categorized_value": "100% Arabica" },
+          { "original_value": "cà phê pha trộn", "categorized_value": "Blend" },
+          { "original_value": "cà phê đặc biệt ethiopia", "categorized_value": "Specialty/Single Origin" }
+        ]
+        `;
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+        
+        const payload = {
+            contents: [{
+                role: "user",
+                parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "original_value": { "type": "STRING" },
+                            "categorized_value": { "type": "STRING" }
+                        },
+                        "propertyOrdering": ["original_value", "categorized_value"]
+                    }
+                }
+            }
+        };
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        let botResponseText = translations[currentLang].error_ai_response;
+        if (result.candidates && result.candidates.length > 0 &&
+            result.candidates[0].content && result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0) {
+            botResponseText = result.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error("API response structure unexpected or empty.");
+        }
+
+        try {
+            const parsedJson = JSON.parse(botResponseText);
+            const categorizationMap = {};
+            parsedJson.forEach(item => {
+                categorizationMap[item.original_value.toLowerCase()] = item.categorized_value;
+            });
+            return categorizationMap;
+        } catch (parseError) {
+            console.error("Lỗi phân tích JSON từ AI:", parseError);
+            throw new Error(translations[currentLang].error_ai_response + ": " + parseError.message);
+        }
+    };
+
+    // Data Processing Function (made global for accessibility)
+    processCategoricalData = async (rawData, columnSemantics) => {
+        // Make a deep copy to avoid modifying rawData directly
+        const processedData = JSON.parse(JSON.stringify(rawData));
+
+        // Find the semantic information for the "Product Type" column or any other categorical column
+        const productTypeSemantic = columnSemantics.find(
+            sem => sem.original_name === "Product Type" || sem.original_name === translations["en"].col_coffee_type || sem.original_name === translations["vn"].col_coffee_type
+        );
+
+        // If no semantic info or no value_mapping, fall back to default string matching
+        if (!productTypeSemantic || !productTypeSemantic.value_mapping || productTypeSemantic.value_mapping.length === 0) {
+            console.warn("No valid column semantics or value_mapping found for Product Type. Falling back to default coffee categorization.");
+            return rawData.map(item => {
+                let type = 'Blend'; // Default for coffee
+                const coffeeType = item[translations["vn"].col_coffee_type] ? String(item[translations["vn"].col_coffee_type]).toLowerCase() : '';
+                if (coffeeType.includes('robusta') && !coffeeType.includes('arabica')) type = '100% Robusta';
+                else if (coffeeType.includes('arabica') && !coffeeType.includes('robusta')) type = '100% Arabica';
+                else if (coffeeType.includes('specialty') || coffeeType.includes('moka') || coffeeType.includes('bourbon') || coffeeType.includes('organic') || coffeeType.includes('yirgacheffe') || coffeeType.includes('honduras')) type = 'Specialty/Single Origin';
+                return { ...item, [translations["vn"].col_coffee_type]: type };
+            });
+        }
+
+        // Extract unique raw product type values
+        const uniqueRawProductTypes = [...new Set(rawData.map(item => 
+            item[productTypeSemantic.original_name] ? String(item[productTypeSemantic.original_name]) : ''
+        ))].filter(Boolean); // Filter out empty strings
+
+        if (uniqueRawProductTypes.length === 0) {
+            return processedData; // No product types to categorize
+        }
+
+        let categorizationMap = {};
+        try {
+            categorizationMap = await getGeminiCategorization(uniqueRawProductTypes, productTypeSemantic);
+        } catch (error) {
+            console.error("Lỗi khi lấy phân loại từ Gemini:", error);
+            // Fallback to default string matching if AI categorization fails
+            console.warn("Falling back to default string matching for product type categorization.");
+            return rawData.map(item => {
+                let type = 'Blend'; // Default for coffee
+                const coffeeType = item[translations["vn"].col_coffee_type] ? String(item[translations["vn"].col_coffee_type]).toLowerCase() : '';
+                if (coffeeType.includes('robusta') && !coffeeType.includes('arabica')) type = '100% Robusta';
+                else if (coffeeType.includes('arabica') && !coffeeType.includes('robusta')) type = '100% Arabica';
+                else if (coffeeType.includes('specialty') || coffeeType.includes('moka') || coffeeType.includes('bourbon') || coffeeType.includes('organic') || coffeeType.includes('yirgacheffe') || coffeeType.includes('honduras')) type = 'Specialty/Single Origin';
+                return { ...item, [translations["vn"].col_coffee_type]: type };
+            });
+        }
+
+        // Apply the categorization from Gemini
+        processedData.forEach(item => {
+            const originalValue = item[productTypeSemantic.original_name] ? String(item[productTypeSemantic.original_name]).toLowerCase() : '';
+            item[productTypeSemantic.original_name] = categorizationMap[originalValue] || 'Other'; // Default to 'Other' if no mapping found
+        });
+
+        return processedData;
+    };
+    
+    // NEW FUNCTION: Standardize CSV Headers using Gemini
+    const standardizeCsvHeadersWithGemini = async (rawHeaders, standardFields, columnSemantics) => { // Added columnSemantics parameter
+        if (!geminiApiKey) {
+            throw new Error(translations[currentLang].alert_enter_api_key);
+        }
+
+        let semanticDetails = '';
+        if (columnSemantics && columnSemantics.length > 0) {
+            semanticDetails = `
+            For better understanding, here are detailed semantics for some of the standard fields:
+            ${columnSemantics.map(sem => {
+                let detail = `- Field "${sem.original_name}": ${sem.description} (Expected format: ${sem.expected_format}). Typical values: ${sem.typical_values.join(', ')}.`;
+                if (sem.value_mapping && sem.value_mapping.length > 0) {
+                    detail += ` Categorical mapping: ${sem.value_mapping.map(vm => `${vm.category_name} (keywords: ${vm.keywords.join(', ')})`).join('; ')}.`;
+                }
+                return detail;
+            }).join('\n')}
+            `;
+        }
+
+        const prompt = `
+        Bạn là một chuyên gia ánh xạ tiêu đề cột. Tôi sẽ cung cấp cho bạn một danh sách các tiêu đề cột thô từ một tệp CSV và một danh sách các tên trường chuẩn.
+        Nhiệm vụ của bạn là ánh xạ mỗi tiêu đề cột thô tới tên trường chuẩn phù hợp nhất về mặt ngữ nghĩa.
+        Nếu một tiêu đề cột thô không có tên trường chuẩn tương ứng rõ ràng, hãy ánh xạ nó tới "UNMATCHED".
+
+        Các tên trường chuẩn có sẵn: ${standardFields.join(', ')}.
+        ${semanticDetails}
+
+        Dưới đây là các tiêu đề cột thô cần ánh xạ:
+        ${rawHeaders.map(header => `- ${header}`).join('\n')}
+
+        Vui lòng trả về kết quả dưới dạng một mảng JSON, mỗi đối tượng chứa "raw_header" và "standard_field".
+        Ví dụ:
+        [
+          { "raw_header": "Product Name", "standard_field": "Sản phẩm" },
+          { "raw_header": "Brand", "standard_field": "Thương hiệu" },
+          { "raw_header": "Listed Price", "standard_field": "Giá niêm yết (VND)" },
+          { "raw_header": "Date Added", "standard_field": "Ngày Thêm" },
+          { "raw_header": "Shipping Fee", "standard_field": "Phí ship (VND)" },
+          { "raw_header": "Freeship Threshold", "standard_field": "Ngưỡng Freeship (VND)" },
+          { "raw_header": "Source", "standard_field": "Nguồn" },
+          { "raw_header": "Coffee Type", "standard_field": "Loại SP" },
+          { "raw_header": "Unit", "standard_field": "Đơn vị tính" },
+          { "raw_header": "Location", "standard_field": "Địa phương" },
+          { "raw_header": "Product Link", "standard_field": "Link" },
+          { "raw_header": "HTML Selector", "standard_field": "HTML" },
+          { "raw_header": "E-commerce Platform", "standard_field": "TMĐT" },
+          { "raw_header": "Update Status", "standard_field": "Tình trạng Giá" },
+          { "raw_header": "Unrecognized Column", "standard_field": "UNMATCHED" }
+        ]
+        `;
+
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+        
+        const payload = {
+            contents: [{
+                role: "user",
+                parts: [{ text: prompt }]
+            }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            "raw_header": { "type": "STRING" },
+                            "standard_field": { "type": "STRING" }
+                        },
+                        "propertyOrdering": ["raw_header", "standard_field"]
+                    }
+                }
+            }
+        };
+
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const result = await response.json();
+        
+        let botResponseText = translations[currentLang].error_ai_response;
+        if (result.candidates && result.candidates.length > 0 &&
+            result.candidates[0].content && result.candidates[0].content.parts &&
+            result.candidates[0].content.parts.length > 0) {
+            botResponseText = result.candidates[0].content.parts[0].text;
+        } else {
+            throw new Error("API response structure unexpected or empty.");
+        }
+
+        try {
+            const parsedJson = JSON.parse(botResponseText);
+            const headerMap = new Map();
+            parsedJson.forEach(item => {
+                if (item.raw_header && item.standard_field) {
+                    headerMap.set(item.raw_header, item.standard_field);
+                }
+            });
+            return headerMap;
+        } catch (parseError) {
+            console.error("Lỗi phân tích JSON từ AI (chuẩn hóa header):", parseError);
+            throw new Error(translations[currentLang].error_ai_response + ": " + parseError.message);
+        }
     };
 
     const generateSelectorFromHtml = (htmlString) => {
@@ -1152,7 +1412,7 @@ document.addEventListener('DOMContentLoaded', function () {
         switch(activeTab) {
             case 'marketOverviewTab':
                 updateBrandPriceChart(dataForCharts);
-                updateCoffeeTypeChart(dataForCharts);
+                updateCategoricalChart(dataForCharts);
                 break;
             case 'competitiveAnalysisTab':
                 updateBrandPositioningChart(dataForCharts);
@@ -1276,22 +1536,67 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     };
 
-    const updateCoffeeTypeChart = (data) => {
+    // Renamed and generalized the chart function
+    function updateCategoricalChart(data) {
+        // The processing of data to map "Product Type" to categories
+        // is now handled by `processCategoricalData` when data is loaded/updated.
+        // This function simply uses the already processed `Product Type` values.
+        
         const typeData = data.reduce((acc, item) => {
-            let type = 'Blend';
-            const coffeeType = item[translations["vn"].col_coffee_type] ? item[translations["vn"].col_coffee_type].toLowerCase() : '';
-            if (coffeeType.includes('robusta') && !coffeeType.includes('arabica')) type = '100% Robusta';
-            else if (coffeeType.includes('arabica') && !coffeeType.includes('robusta')) type = '100% Arabica';
-            else if (coffeeType.includes('specialty') || coffeeType.includes('moka') || coffeeType.includes('bourbon') || coffeeType.includes('organic') || coffeeType.includes('yirgacheffe') || coffeeType.includes('honduras')) type = 'Specialty/Single Origin';
+            // Use the already processed value from the item
+            const type = item[translations["vn"].col_coffee_type] || 'Uncategorized'; // Use Vietnamese column name
             acc[type] = (acc[type] || 0) + 1;
             return acc;
         }, {});
+
+        const labels = Object.keys(typeData);
+        const counts = Object.values(typeData);
+
         const ctx = document.getElementById('coffeeTypeChart').getContext('2d');
-        createChart(ctx, 'doughnut', {
-            labels: Object.keys(typeData),
-            datasets: [{ data: Object.values(typeData), backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'] }]
-        }, { responsive: true, maintainAspectRatio: false });
-    };
+        if (charts['coffeeTypeChart']) charts['coffeeTypeChart'].destroy(); // Use charts object
+        
+        charts['coffeeTypeChart'] = new Chart(ctx, { // Assign to charts object
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9933'] // Added more colors
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right', // Position legend on the right
+                        labels: {
+                            boxWidth: 20,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    label += context.parsed + ' (' + ((context.parsed / context.dataset.data.reduce((a, b) => a + b, 0)) * 100).toFixed(2) + '%)';
+                                }
+                                return label;
+                            }
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: translations[currentLang].coffee_type_chart_title // Use dynamic heading
+                    }
+                }
+            }
+        });
+    }
     
     const updateBrandPositioningChart = (data) => {
       const pricesPerKg = data.map(item => calculatePricePerKg(item)).filter(p => p !== null && isFinite(p));
@@ -2236,111 +2541,236 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         }
     };
 
-
     csvFileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+        const files = event.target.files;
+        if (files.length === 0) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const text = e.target.result;
-            const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-            if (lines.length < 2) {
-                alert(translations[currentLang].alert_invalid_csv);
-                csvFileInput.value = '';
-                return;
+        let csvFile = null;
+        let jsonFile = null;
+
+        for (const file of files) {
+            if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                csvFile = file;
+            } else if (file.type === 'application/json' || file.name.endsWith('.json')) {
+                jsonFile = file;
             }
+        }
 
-            const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
-            
-            detectLanguage(header);
-            
-            // --- FIX STARTS HERE ---
-            const existingIds = new Set(sst_data.map(item => item.ID));
-            let idCounter = 0;
-
-            const newSstEntries = lines.map(line => {
-                const values = parseCsvLine(line);
-                if (values.length !== header.length) {
-                    console.warn('Skipping malformed CSV line:', line);
-                    return null;
-                }
-                const rowData = {};
-                header.forEach((colName, index) => {
-                    rowData[colName] = values[index] ? values[index].replace(/"/g, '').trim() : null;
-                });
-                
-                let finalId = rowData['ID'];
-                if (!finalId || finalId.trim() === '') {
-                    while (true) {
-                        const nextId = `ID${String(idCounter).padStart(3, '0')}`;
-                        if (!existingIds.has(nextId)) {
-                            finalId = nextId;
-                            existingIds.add(finalId); // Thêm ID mới vào bộ đệm ngay lập tức
-                            break;
-                        }
-                        idCounter++;
+        if (jsonFile) {
+            try {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        columnSemantics = JSON.parse(e.target.result);
+                        alert('Đã tải ngữ nghĩa cột từ tệp JSON.');
+                    } catch (parseError) {
+                        alert('Lỗi phân tích tệp JSON: ' + parseError.message);
+                        console.error('Lỗi phân tích tệp JSON:', parseError);
                     }
+                };
+                reader.readAsText(jsonFile, 'UTF-8');
+            } catch (error) {
+                alert('Lỗi khi đọc tệp JSON: ' + error.message);
+                console.error('Lỗi khi đọc tệp JSON:', error);
+            }
+        }
+
+        if (csvFile) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+                if (lines.length < 2) {
+                    alert(translations[currentLang].alert_invalid_csv);
+                    csvFileInput.value = '';
+                    return;
                 }
 
-                const parsedDate = parseDateString(rowData[translations[currentLang].col_date_added], currentLang);
-                return {
-                    "ID": finalId,
-                    "Sản phẩm": rowData[translations[currentLang].col_product] || '',
-                    "Thương hiệu": rowData[translations[currentLang].col_brand] || '',
-                    "Nguồn": rowData[translations[currentLang].col_source] || '',
-                    "Link": rowData[translations[currentLang].col_link] || '',
-                    "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
-                    "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
-                    "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
-                    "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
-                    "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
-                    "Địa phương": rowData[translations[currentLang].col_location] || '',
-                    "HTML": rowData[translations[currentLang].col_html_selector] || '',
-                    "Ngày Thêm": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
-                    "Tình trạng Giá": getOriginalLangUpdateStatus(rowData[translations[currentLang].col_update_status]) === 'Cũ' ? 'Cũ' : 'Đã',
-                    "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
-                };
-            }).filter(entry => entry !== null);
-            // --- FIX ENDS HERE ---
+                const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
+                
+                let added_length;
+                if ((!columnSemantics) || (!(columnSemantics.length>0))) {
+                    console.log("columnSemantics", columnSemantics)
+                    console.log("columnSemantics.length", columnSemantics.length)
+                    detectLanguage(header);
+                    
+                    // --- FIX STARTS HERE ---
+                    const existingIds = new Set(sst_data.map(item => item.ID));
+                    let idCounter = 0;
 
-            if (newSstEntries.length === 0) {
-                alert(translations[currentLang].alert_no_valid_data);
-                csvFileInput.value = '';
-                return;
-            }
+                    const newSstEntries = lines.map(line => {
+                        const values = parseCsvLine(line);
+                        if (values.length !== header.length) {
+                            console.warn('Skipping malformed CSV line:', line);
+                            return null;
+                        }
+                        const rowData = {};
+                        header.forEach((colName, index) => {
+                            rowData[colName] = values[index] ? values[index].replace(/"/g, '').trim() : null;
+                        });
+                        
+                        let finalId = rowData['ID'];
+                        if (!finalId || finalId.trim() === '') {
+                            while (true) {
+                                const nextId = `ID${String(idCounter).padStart(3, '0')}`;
+                                if (!existingIds.has(nextId)) {
+                                    finalId = nextId;
+                                    existingIds.add(finalId); // Thêm ID mới vào bộ đệm ngay lập tức
+                                    break;
+                                }
+                                idCounter++;
+                            }
+                        }
 
-            sst_data.push(...newSstEntries);
-            currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
-            if (sstGridOptions && sstGridOptions.api) {
-                sstGridOptions.api.setRowData(currentFilteredData);
-            }
-            
-            if (sst_data.length > 0) {
-                const pallDates = sst_data.map(item => parseDateString(item[translations["vn"].col_date_added], currentLang));
-                allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
-                if (allDates.length > 0) {
-                    const allTimestamps = allDates.map(d => d.getTime());
-                    const minDate = new Date(Math.min.apply(null, allTimestamps) || '2025-05-23');
-                    const maxDate = new Date(Math.max.apply(null, allTimestamps) || '2025-07-06');
-                    picker.setDateRange(minDate, maxDate, true);
+                        const parsedDate = parseDateString(rowData[translations[currentLang].col_date_added], currentLang);
+                        return {
+                            "ID": finalId,
+                            "Sản phẩm": rowData[translations[currentLang].col_product] || '',
+                            "Thương hiệu": rowData[translations[currentLang].col_brand] || '',
+                            "Nguồn": rowData[translations[currentLang].col_source] || '',
+                            "Link": rowData[translations[currentLang].col_link] || '',
+                            "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
+                            "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                            "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
+                            "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
+                            "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
+                            "Địa phương": rowData[translations[currentLang].col_location] || '',
+                            "HTML": rowData[translations[currentLang].col_html_selector] || '',
+                            "Ngày Thêm": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
+                            "Tình trạng Giá": getOriginalLangUpdateStatus(rowData[translations[currentLang].col_update_status]) === 'Cũ' ? 'Cũ' : 'Đã',
+                            "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
+                        };
+                    }).filter(entry => entry !== null);
+                    // --- FIX ENDS HERE ---
+
+                    if (newSstEntries.length === 0) {
+                        alert(translations[currentLang].alert_no_valid_data);
+                        csvFileInput.value = '';
+                        return;
+                    }
+
+                    sst_data.push(...newSstEntries);
+                    
+                    added_length = newSstEntries.length;
+                } else {
+                    // Extract standard fields from sstSchema
+                    const standardSstFields = sstSchema.map(col => col.field);
+
+                    let headerMap;
+                    try {
+                        // Call the new standardization function, passing columnSemantics
+                        headerMap = standardizeCsvHeadersWithGemini(header, standardSstFields, columnSemantics); 
+                        console.log("Header mapping from Gemini:", headerMap);
+                    } catch (error) {
+                        console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
+                        alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                        return;
+                    }
+
+                    // Apply the mapping to the rawHeader to get the standardized header
+                    // If a raw header isn't in the map, it will be mapped to "UNMATCHED" or kept as is,
+                    // depending on the standardizeCsvHeadersWithGemini implementation.
+                    let standardizedHeader = header.map(rh => headerMap.get(rh) || rh); // Fallback to raw if not mapped
+                    
+                    // Filter out "UNMATCHED" headers if you don't want them in your data
+                    // standardizedHeader = standardizedHeader.filter(h => h !== "UNMATCHED"); 
+                    
+                    console.log("Standardized header (sau Gemini):", standardizedHeader);
+                    
+                    detectLanguage(standardizedHeader);
+                    
+                    // --- FIX STARTS HERE ---
+                    const existingIds = new Set(sst_data.map(item => item.ID));
+                    let idCounter = 0;
+
+                    const newSstEntries = lines.map(line => {
+                        const values = parseCsvLine(line);
+                        if (values.length !== standardizedHeader.length) {
+                            console.warn('Skipping malformed CSV line:', line);
+                            return null;
+                        }
+                        const rowData = {};
+                        standardizedHeader.forEach((colName, index) => {
+                            rowData[colName] = values[index] ? values[index].replace(/"/g, '').trim() : null;
+                        });
+                        
+                        let finalId = rowData['ID'];
+                        if (!finalId || finalId.trim() === '') {
+                            while (true) {
+                                const nextId = `ID${String(idCounter).padStart(3, '0')}`;
+                                if (!existingIds.has(nextId)) {
+                                    finalId = nextId;
+                                    existingIds.add(finalId); // Thêm ID mới vào bộ đệm ngay lập tức
+                                    break;
+                                }
+                                idCounter++;
+                            }
+                        }
+
+                        const parsedDate = parseDateString(rowData[translations[currentLang].col_date_added], currentLang);
+                        return {
+                            "ID": finalId,
+                            "Sản phẩm": rowData[translations[currentLang].col_product] || '',
+                            "Thương hiệu": rowData[translations[currentLang].col_brand] || '',
+                            "Nguồn": rowData[translations[currentLang].col_source] || '',
+                            "Link": rowData[translations[currentLang].col_link] || '',
+                            "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
+                            "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                            "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
+                            "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
+                            "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
+                            "Địa phương": rowData[translations[currentLang].col_location] || '',
+                            "HTML": rowData[translations[currentLang].col_html_selector] || '',
+                            "Ngày Thêm": parsedDate ? parsedDate.toISOString().split('T')[0] : getFormattedDate(),
+                            "Tình trạng Giá": getOriginalLangUpdateStatus(rowData[translations[currentLang].col_update_status]) === 'Cũ' ? 'Cũ' : 'Đã',
+                            "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
+                        };
+                    }).filter(entry => entry !== null);
+                    // --- FIX ENDS HERE ---
+
+                    if (newSstEntries.length === 0) {
+                        alert(translations[currentLang].alert_no_valid_data);
+                        csvFileInput.value = '';
+                        return;
+                    }
+
+                    const processedNewSstEntries = processCategoricalData(newSstEntries, columnSemantics); 
+                    
+                    sst_data.push(...processedNewSstEntries);
+                    added_length = processedNewSstEntries.length;
+                }
+                
+                currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
+                if (sstGridOptions && sstGridOptions.api) {
+                    sstGridOptions.api.setRowData(currentFilteredData);
+                }
+                
+                if (sst_data.length > 0) {
+                    const pallDates = sst_data.map(item => parseDateString(item[translations["vn"].col_date_added], currentLang));
+                    allDates = pallDates.filter(d => d !== null && !isNaN(d.getTime()));
+                    if (allDates.length > 0) {
+                        const allTimestamps = allDates.map(d => d.getTime());
+                        const minDate = new Date(Math.min.apply(null, allTimestamps) || '2025-05-23');
+                        const maxDate = new Date(Math.max.apply(null, allTimestamps) || '2025-07-06');
+                        picker.setDateRange(minDate, maxDate, true);
+                        const fromDate = picker.getStartDate();
+                        const toDate = picker.getEndDate();
+                        applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+                    } else {
+                        picker.clearSelection();
+                        applyAllFilters(null, null);
+                    }
+                } else {
                     const fromDate = picker.getStartDate();
                     const toDate = picker.getEndDate();
                     applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
-                } else {
-                    picker.clearSelection();
-                    applyAllFilters(null, null);
                 }
-            } else {
-                const fromDate = picker.getStartDate();
-                const toDate = picker.getEndDate();
-                applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
-            }
 
-            alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
-        };
-        reader.readAsText(file, 'UTF-8');
-        event.target.value = '';
+                alert(`${added_length} ${translations[currentLang].alert_rows_added}`);
+            };
+            reader.readAsText(csvFile, 'UTF-8');
+            event.target.value = '';
+        }
     });
     
     document.getElementById('toggle-queue-btn').addEventListener('click', () => {
@@ -2734,6 +3164,9 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         
             const columnHeaders = payload.columnHeaders;
             const rows = payload.rows;
+            const receivedColumnSemantics = payload.columnSemantics; // Capture columnSemantics
+            // Update global columnSemantics
+            columnSemantics = receivedColumnSemantics || [];
             
             let text = columnHeaders.map(escapeCsv).join(',') + '\n';
             rows.forEach(row => {
@@ -2748,7 +3181,32 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
 
             console.log("header", header);
-            detectLanguage(header);
+            
+            // Extract standard fields from sstSchema
+            const standardSstFields = sstSchema.map(col => col.field);
+
+            let headerMap;
+            try {
+                // Call the new standardization function, passing columnSemantics
+                headerMap = standardizeCsvHeadersWithGemini(header, standardSstFields, columnSemantics); 
+                console.log("Header mapping from Gemini:", headerMap);
+            } catch (error) {
+                console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
+                alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                return;
+            }
+
+            // Apply the mapping to the rawHeader to get the standardized header
+            // If a raw header isn't in the map, it will be mapped to "UNMATCHED" or kept as is,
+            // depending on the standardizeCsvHeadersWithGemini implementation.
+            let standardizedHeader = header.map(rh => headerMap.get(rh) || rh); // Fallback to raw if not mapped
+            
+            // Filter out "UNMATCHED" headers if you don't want them in your data
+            // standardizedHeader = standardizedHeader.filter(h => h !== "UNMATCHED"); 
+            
+            console.log("Standardized header (sau Gemini):", standardizedHeader);
+            
+            detectLanguage(standardizedHeader);
             
             // --- FIX STARTS HERE ---
             const existingIds = new Set(sst_data.map(item => item.ID));
@@ -2756,12 +3214,12 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
             const newSstEntries = lines.map(line => {
                 const values = parseCsvLine(line);
-                if (values.length !== header.length) {
+                if (values.length !== standardizedHeader.length) {
                     console.warn('Skipping malformed CSV line:', line);
                     return null;
                 }
                 const rowData = {};
-                header.forEach((colName, index) => {
+                standardizedHeader.forEach((colName, index) => {
                     rowData[colName] = values[index] ? values[index].replace(/"/g, '').trim() : null;
                 });
                 
@@ -2805,7 +3263,11 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 return;
             }
 
-            sst_data.push(...newSstEntries);
+            const processedNewSstEntries = processCategoricalData(newSstEntries, columnSemantics); 
+            
+            sst_data.push(...processedNewSstEntries);
+            
+            
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
             if (sstGridOptions && sstGridOptions.api) {
                 sstGridOptions.api.setRowData(currentFilteredData);
