@@ -1055,11 +1055,12 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log("standardizeCsvHeadersWithGemini", columnSemantics);
         let semanticDetails = '';
         let temp = columnSemantics.map(sem => {
-                let original_name = sem.original_name || [];
+                let original_name = sem.original_name || '';
                 let description = sem.description || '';
                 let expected_format = sem.expected_format || '';
+                let typical_values = sem.typical_values || [];
                 let value_mapping = sem.value_mapping || [];
-                let detail = `- Field "${original_name}": ${description} (Expected format: ${expected_format}). Typical values: ${sem.typical_values.join(', ')}.`;
+                let detail = `- Field "${original_name}": ${description} (Expected format: ${expected_format}). Typical values: ${typical_values.join(', ')}.`;
                 if (value_mapping && value_mapping.length > 0) {
                     detail += ` Categorical mapping: ${value_mapping.map(vm => `${vm.category_name} (keywords: ${vm.keywords.join(', ')})`).join('; ')}.`;
                 }
