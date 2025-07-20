@@ -3124,7 +3124,66 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         setViewMode(isEditMode);
 
     });
+
+
+    // --- 6. INITIAL LOAD ---
+    const endDate = new Date('2025-07-06');
+    const startDate = new Date('2025-05-23');
+    picker.setDateRange(startDate, endDate);
+    languageSwitcher.value = savedLang;
+
+    // --- 7. CHECK FOR FIRST TIME HELP MODAL ---\
+    if (!localStorage.getItem("hasSeenHelp")) {
+      helpModalBody.addEventListener("scroll", function () {
+        const isBottom = helpModalBody.scrollTop + helpModalBody.clientHeight >= helpModalBody.scrollHeight - 5;
+        if (isBottom) {
+          hasScrolledToBottom = true;
+        }
+      });
+      if (helpModal) {
+        helpModal.classList.remove('hidden');
+      }
+    }
+
+    // Apply resizable to all chart containers
+    document.querySelectorAll('.chart-container').forEach(makeResizable);
     
+    
+    
+    fetch('/api/default-mode')
+        .then(res => res.json())
+        .then(data => {
+        const scrapingMode = data.default_mode || "bs4";
+        modeLabel = document.getElementById("mode-label");
+        modeLabel.textContent =
+          scrapingMode === "selenium" ? "ổn định" : "ưu tiên tốc độ";
+        modeLabel.classList.add(scrapingMode === 'selenium' ? 'text-green-600' : 'text-orange-500');
+        document.getElementById("version-mode").textContent = scrapingMode;
+        })
+    .catch(err => {
+        console.error("Lỗi lấy chế độ mặc định:", err);
+    });
+    
+    scrapingMode = document.getElementById("version-mode").textContent
+    const helpIntro2 = document.querySelector('[data-lang-key="help_intro2"]');
+    const helpIntro3 = document.querySelector('[data-lang-key="help_intro3"]');
+    if (helpIntro2) {
+        helpIntro2.setAttribute("data-lang-key", scrapingMode === 'selenium'
+            ? "help_intro2_stable"
+            : "help_intro2_speed");
+    }
+    if (helpIntro3) {
+        helpIntro3.setAttribute("data-lang-key", scrapingMode === 'selenium'
+            ? "help_intro3_stable"
+            : "help_intro3_speed");
+    }
+});
+</script>
+
+
+<script type="module">
+
+document.addEventListener("DOMContentLoaded", function () {
     // Handle messages from parent (index.html)
     window.addEventListener('message', async (event) => {
         // Ensure the message is from a trusted origin if deployed publicly
@@ -3279,67 +3338,6 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
         }
     });
-
-
-    // --- 6. INITIAL LOAD ---
-    const endDate = new Date('2025-07-06');
-    const startDate = new Date('2025-05-23');
-    picker.setDateRange(startDate, endDate);
-    languageSwitcher.value = savedLang;
-
-    // --- 7. CHECK FOR FIRST TIME HELP MODAL ---\
-    if (!localStorage.getItem("hasSeenHelp")) {
-      helpModalBody.addEventListener("scroll", function () {
-        const isBottom = helpModalBody.scrollTop + helpModalBody.clientHeight >= helpModalBody.scrollHeight - 5;
-        if (isBottom) {
-          hasScrolledToBottom = true;
-        }
-      });
-      if (helpModal) {
-        helpModal.classList.remove('hidden');
-      }
-    }
-
-    // Apply resizable to all chart containers
-    document.querySelectorAll('.chart-container').forEach(makeResizable);
-    
-    
-});
-</script>
-
-
-<script>
-
-document.addEventListener("DOMContentLoaded", function () {
-    
-    
-    fetch('/api/default-mode')
-        .then(res => res.json())
-        .then(data => {
-        const scrapingMode = data.default_mode || "bs4";
-        modeLabel = document.getElementById("mode-label");
-        modeLabel.textContent =
-          scrapingMode === "selenium" ? "ổn định" : "ưu tiên tốc độ";
-        modeLabel.classList.add(scrapingMode === 'selenium' ? 'text-green-600' : 'text-orange-500');
-        document.getElementById("version-mode").textContent = scrapingMode;
-        })
-    .catch(err => {
-        console.error("Lỗi lấy chế độ mặc định:", err);
-    });
-    
-    scrapingMode = document.getElementById("version-mode").textContent
-    const helpIntro2 = document.querySelector('[data-lang-key="help_intro2"]');
-    const helpIntro3 = document.querySelector('[data-lang-key="help_intro3"]');
-    if (helpIntro2) {
-        helpIntro2.setAttribute("data-lang-key", scrapingMode === 'selenium'
-            ? "help_intro2_stable"
-            : "help_intro2_speed");
-    }
-    if (helpIntro3) {
-        helpIntro3.setAttribute("data-lang-key", scrapingMode === 'selenium'
-            ? "help_intro3_stable"
-            : "help_intro3_speed");
-    }
 });
     
 </script>
