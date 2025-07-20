@@ -2671,7 +2671,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 return;
             }
 
-            const processedNewSstEntries = processCategoricalData(newSstEntries, columnSemantics); 
+            const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
             
             sst_data.push(...processedNewSstEntries);
             
@@ -2899,7 +2899,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                         return;
                     }
 
-                    const processedNewSstEntries = processCategoricalData(newSstEntries, columnSemantics); 
+                    const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
                     
                     sst_data.push(...processedNewSstEntries);
                     added_length = processedNewSstEntries.length;
