@@ -1044,7 +1044,7 @@ document.addEventListener('DOMContentLoaded', function () {
     };
     
     // NEW FUNCTION: Standardize CSV Headers using Gemini
-    const standardizeCsvHeadersWithGemini = (rawHeaders, standardFields, columnSemantics) => { // Added columnSemantics parameter
+    const standardizeCsvHeadersWithGemini = async (rawHeaders, standardFields, columnSemantics) => { // Added columnSemantics parameter
         if (!geminiApiKey) {
             throw new Error(translations[currentLang].alert_enter_api_key);
         }
@@ -2541,7 +2541,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         }
     };
 
-    csvFileInput.addEventListener('change', (event) => {
+    csvFileInput.addEventListener('change', async (event) => {
         const files = event.target.files;
         if (files.length === 0) return;
 
@@ -3145,7 +3145,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     document.querySelectorAll('.chart-container').forEach(makeResizable);
     
     // Handle messages from parent (index.html)
-    window.addEventListener('message', (event) => {
+    window.addEventListener('message', async (event) => {
         // Ensure the message is from a trusted origin if deployed publicly
         // if (event.origin !== "YOUR_EXPECTED_ORIGIN") return;
         const { type, payload } = event.data;
@@ -3188,7 +3188,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             let headerMap;
             try {
                 // Call the new standardization function, passing columnSemantics
-                headerMap = standardizeCsvHeadersWithGemini(header, standardSstFields, columnSemantics); 
+                headerMap = await standardizeCsvHeadersWithGemini(header, standardSstFields, columnSemantics); 
                 console.log("Header mapping from Gemini:", headerMap);
             } catch (error) {
                 console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
