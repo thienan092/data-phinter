@@ -2558,7 +2558,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         const { type, payload } = event.data;
 
         if (type === 'SST_DATA_FROM_INDEX') {
-            function escapeCsv(value) { 
+            function escapeCsv(value) {
                 if (value === null || value === undefined) {
                     return '';
                 }
@@ -2660,20 +2660,24 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     "Tình trạng Giá": 'Đã',
                     "TMĐT": rowData[translations[currentLang].col_ecommerce_platform] || ''
                 };
-                let un = 0;
-                un = un+1;
             }).filter(entry => entry !== null);
             // --- FIX ENDS HERE ---
 
             if (newSstEntries.length === 0) {
                 alert(translations[currentLang].alert_no_valid_data);
-                csvFileInput.value = '';
                 return;
             }
 
-            const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
+            try {
+                const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
             
-            sst_data.push(...processedNewSstEntries);
+                sst_data.push(...processedNewSstEntries);
+            } catch (error) {
+                console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
+                alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                return;
+            }
+            
             
             
             currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
@@ -2742,7 +2746,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
         if (csvFile) {
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 const text = e.target.result;
                 const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
                 if (lines.length < 2) {
@@ -2899,9 +2903,17 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                         return;
                     }
 
-                    const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
                     
-                    sst_data.push(...processedNewSstEntries);
+                    try {
+                        const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
+                    
+                        sst_data.push(...processedNewSstEntries);
+                    } catch (error) {
+                        console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
+                        alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                        return;
+                    }
+                    
                     added_length = processedNewSstEntries.length;
                 }
                 
