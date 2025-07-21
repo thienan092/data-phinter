@@ -824,6 +824,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!weightStr) return 0;
         const value = parseFloat(String(weightStr).replace(/,/g, ''));
         if (String(weightStr).toLowerCase().includes('kg')) return value * 1000;
+        if (String(weightStr).toLowerCase().includes('kilogram')) return value * 1000;
+        if (String(weightStr).toLowerCase().includes('lb')) return value * 453.592;
+        if (String(weightStr).toLowerCase().includes('pound')) return value * 453.592;
         return value;
     };
 
@@ -991,14 +994,11 @@ document.addEventListener('DOMContentLoaded', function () {
     const processCategoricalData = async (rawData, columnSemantics) => {
         // Make a deep copy to avoid modifying rawData directly
         const processedData = JSON.parse(JSON.stringify(rawData));
-
-        // Find the semantic information for the "Product Type" column or any other categorical column
-        const productTypeSemantic = columnSemantics.find(
-            sem => sem.original_name === "Product Type" || sem.original_name === translations["en"].col_coffee_type || sem.original_name === translations["vn"].col_coffee_type
-        );
+        console.log("processCategoricalData", columnSemantics);
+        console.log("processCategoricalData", columnSemantics.length);
 
         // If no semantic info or no value_mapping, fall back to default string matching
-        if (!productTypeSemantic || !productTypeSemantic.value_mapping || productTypeSemantic.value_mapping.length === 0) {
+        if (columnSemantics && columnSemantics.length === 0) {
             console.warn("No valid column semantics or value_mapping found for Product Type. Falling back to default coffee categorization.");
             return rawData.map(item => {
                 let type = 'Blend'; // Default for coffee
@@ -1009,10 +1009,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 return { ...item, [translations["vn"].col_coffee_type]: type };
             });
         }
+        
+        const productTypeSemantic = columnSemantics.find(
+            sem => sem.original_name === "Product Type" || sem.original_name === translations["en"].col_coffee_type || sem.original_name === translations["vn"].col_coffee_type
+        );
 
         // Extract unique raw product type values
         const uniqueRawProductTypes = [...new Set(rawData.map(item => 
-            item[productTypeSemantic.original_name] ? String(item[productTypeSemantic.original_name]) : ''
+            item[translations["vn"].col_coffee_type] ? String(item[translations["vn"].col_coffee_type]) : ''
         ))].filter(Boolean); // Filter out empty strings
 
         if (uniqueRawProductTypes.length === 0) {
@@ -1023,8 +1027,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const categorizationMap = await getGeminiCategorization(uniqueRawProductTypes, productTypeSemantic);
             // Apply the categorization from Gemini
             processedData.forEach(item => {
-                const originalValue = item[productTypeSemantic.original_name] ? String(item[productTypeSemantic.original_name]).toLowerCase() : '';
-                item[productTypeSemantic.original_name] = categorizationMap[originalValue] || 'Other'; // Default to 'Other' if no mapping found
+                const originalValue = item[translations["vn"].col_coffee_type] ? String(item[translations["vn"].col_coffee_type]).toLowerCase() : '';
+                item[translations["vn"].col_coffee_type] = categorizationMap[originalValue] || 'Other'; // Default to 'Other' if no mapping found
             });
         } catch (error) {
             console.error("Lỗi khi lấy phân loại từ Gemini:", error);
@@ -1520,6 +1524,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateBrandPriceChart = (data) => {
         const brandData = data.reduce((acc, item) => {
             const brand = item['Thương hiệu'];
+            console.log("updateBrandPriceChart", brand);
+            console.log("updateBrandPriceChart", brand);
             if (!acc[brand]) acc[brand] = { total_price_per_kg: 0, count: 0 };
             const pricePerKg = calculatePricePerKg(item);
             if(pricePerKg > 0) {
@@ -2759,7 +2765,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
                 const header = parseCsvLine(lines.shift()).map(h => h.replace(/"/g, ''));
                 
-                let added_length;
+                let newSstEntries;
                 if ((!columnSemantics) || (!(columnSemantics.length>0))) {
                     console.log("columnSemantics", columnSemantics)
                     console.log("columnSemantics.length", columnSemantics.length)
@@ -2769,7 +2775,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     const existingIds = new Set(sst_data.map(item => item.ID));
                     let idCounter = 0;
 
-                    const newSstEntries = lines.map(line => {
+                    newSstEntries = lines.map(line => {
                         const values = parseCsvLine(line);
                         if (values.length !== header.length) {
                             console.warn('Skipping malformed CSV line:', line);
@@ -2813,16 +2819,6 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                         };
                     }).filter(entry => entry !== null);
                     // --- FIX ENDS HERE ---
-
-                    if (newSstEntries.length === 0) {
-                        alert(translations[currentLang].alert_no_valid_data);
-                        csvFileInput.value = '';
-                        return;
-                    }
-
-                    sst_data.push(...newSstEntries);
-                    
-                    added_length = newSstEntries.length;
                 } else {
                     // Extract standard fields from sstSchema
                     const standardSstFields = sstSchema.map(col => col.field);
@@ -2854,7 +2850,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     const existingIds = new Set(sst_data.map(item => item.ID));
                     let idCounter = 0;
 
-                    const newSstEntries = lines.map(line => {
+                    newSstEntries = lines.map(line => {
                         const values = parseCsvLine(line);
                         if (values.length !== standardizedHeader.length) {
                             console.warn('Skipping malformed CSV line:', line);
@@ -2899,24 +2895,25 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     }).filter(entry => entry !== null);
                     // --- FIX ENDS HERE ---
 
-                    if (newSstEntries.length === 0) {
-                        alert(translations[currentLang].alert_no_valid_data);
-                        csvFileInput.value = '';
-                        return;
-                    }
+                    
+                }
+                
+                if (newSstEntries.length === 0) {
+                    alert(translations[currentLang].alert_no_valid_data);
+                    csvFileInput.value = '';
+                    return;
+                }
 
-                    
-                    try {
-                        const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
-                    
-                        sst_data.push(...processedNewSstEntries);
-                    } catch (error) {
-                        console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
-                        alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
-                        return;
-                    }
-                    
-                    added_length = processedNewSstEntries.length;
+                
+                try {
+                    console.log("processCategoricalData");
+                    const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
+                
+                    sst_data.push(...processedNewSstEntries);
+                } catch (error) {
+                    console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
+                    alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                    return;
                 }
                 
                 currentFilteredData = [...sst_data]; // Reset filtered data to include new entries
@@ -2945,7 +2942,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
                 }
 
-                alert(`${added_length} ${translations[currentLang].alert_rows_added}`);
+                alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
             };
             reader.readAsText(csvFile, 'UTF-8');
             event.target.value = '';
