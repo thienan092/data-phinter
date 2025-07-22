@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_header_freeship_threshold: "Freeship Threshold (VND)",
             col_header_source: "Citation Source",
             col_header_coffee_type: "Coffee Type",
-            col_header_unit: "Unit",
+            col_header_unit: "Net Weight",
             col_header_location: "Sell Location",
             col_header_link: "Product Link",
             col_header_html_selector: "HTML Selector (Price)",
@@ -605,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_freeship_threshold: "Freeship Threshold (VND)",
             col_source: "Source",
             col_coffee_type: "Product Type",
-            col_unit: "Unit",
+            col_unit: "Net Weight",
             col_location: "Location",
             col_link: "Product Link",
             col_html_selector: "HTML",
@@ -636,7 +636,10 @@ document.addEventListener('DOMContentLoaded', function () {
             total_customer_cost: 'Total Customer Cost (VND)',
             cart: 'Cart',
             total_cost: 'Total Cost',
-            alert_header_standardization_error: "CSV header standardization error:" // New translation key
+            alert_header_standardization_error: "CSV header standardization error:", // New translation key
+            alert_json_reading_error: 'Error while reading JSON file: ', 
+            alert_json_parsing_error: 'Error while parsing JSON file: ',
+            alert_json_import_done: 'Completed importing JSON file.'
         },
         vn: {
             page_title: "Ứng Dụng Hỗ Trợ Kiểm Chứng và Tích Lũy Dữ Liệu \"Tìm Kiếm Sâu\" (bản Kệ Hàng Cà Phê Trực Tuyến)",
@@ -727,7 +730,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_header_freeship_threshold: "Ngưỡng Freeship (VND)",
             col_header_source: "Nguồn Trích dẫn",
             col_header_coffee_type: "Loại Cà phê",
-            col_header_unit: "Đơn vị tính",
+            col_header_unit: "Khối lượng tịnh",
             col_header_location: "Tại Địa phương",
             col_header_link: "Link Mô tả",
             col_header_html_selector: "HTML Selector (Giá)",
@@ -740,7 +743,7 @@ document.addEventListener('DOMContentLoaded', function () {
             col_freeship_threshold: "Ngưỡng Freeship (VND)",
             col_source: "Nguồn",
             col_coffee_type: "Loại SP",
-            col_unit: "Đơn vị tính",
+            col_unit: "Khối lượng tịnh",
             col_location: "Địa phương",
             col_link: "Link",
             col_html_selector: "HTML",
@@ -771,7 +774,10 @@ document.addEventListener('DOMContentLoaded', function () {
             total_customer_cost: 'Tổng chi phí khách hàng trả (VND)',
             cart: 'Giỏ hàng',
             total_cost: 'Tổng trả',
-            alert_header_standardization_error: "Lỗi chuẩn hóa tiêu đề CSV:" // New translation key
+            alert_header_standardization_error: "Lỗi chuẩn hóa tiêu đề CSV:", // New translation key
+            alert_json_reading_error: 'Lỗi khi đọc tệp JSON: ',
+            alert_json_parsing_error: 'Lỗi khi phân tích têp JSON: ',
+            alert_json_import_done: 'Đã tải ngữ nghĩa cột từ tệp JSON.'
         }
     };
     
@@ -788,7 +794,7 @@ document.addEventListener('DOMContentLoaded', function () {
         { field: "Ngưỡng Freeship (VND)", headerName: "Ngưỡng Freeship (VND)" },
         { field: "Nguồn", headerName: "Nguồn Trích dẫn" },
         { field: "Loại SP", headerName: "Loại Cà phê" },
-        { field: "Đơn vị tính", headerName: "Đơn vị tính" },
+        { field: "Khối lượng tịnh", headerName: "Khối lượng tịnh" },
         { field: "Địa phương", headerName: "Tại Địa phương" },
         { field: "Link", headerName: "Link Mô tả" },
         { field: "HTML", headerName: "HTML Selector (Giá)" },
@@ -821,20 +827,80 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     const parseWeight = (weightStr) => {
-        if (!weightStr) return 0;
-        const value = parseFloat(String(weightStr).replace(/,/g, ''));
-        if (String(weightStr).toLowerCase().includes('kg')) return value * 1000;
-        if (String(weightStr).toLowerCase().includes('kilogram')) return value * 1000;
-        if (String(weightStr).toLowerCase().includes('lb')) return value * 453.592;
-        if (String(weightStr).toLowerCase().includes('pound')) return value * 453.592;
-        return value;
+        if (!weightStr) return 0; // Trả về 0 kg nếu chuỗi rỗng hoặc null
+
+        const str = String(weightStr).toLowerCase();
+
+        const numUnitMatch = str.match(/([\d\s,.]+)\s*(kg|kilogram|ký|lb|pound|pao|paol|g|gram|gam)?/);
+
+        if (!numUnitMatch || !numUnitMatch[1]) {
+            return 1; 
+        }
+
+        let cleanedNumStr = numUnitMatch[1].replace(/\s/g, ''); // Loại bỏ khoảng trắng
+        // Kiểm tra xem có phải là định dạng thập phân kiểu châu Âu không (dấu phẩy là thập phân, dấu chấm là phân cách hàng nghìn)
+        if (currentLang === 'vn' || str.includes(',')) { // Nếu ngôn ngữ là VN hoặc có dấu phẩy trong số (có thể là thập phân)
+            if (cleanedNumStr.indexOf(',') > -1 && cleanedNumStr.indexOf('.') > -1) {
+                // Có cả dấu phẩy và dấu chấm, cần xác định cái nào là thập phân.
+                // Giả sử dấu phẩy là thập phân nếu nó là dấu cuối cùng, ngược lại dấu chấm là thập phân.
+                if (cleanedNumStr.indexOf(',') > cleanedNumStr.indexOf('.')) {
+                    cleanedNumStr = cleanedNumStr.replace(/\./g, '').replace(/,/g, '.'); // Xóa dấu chấm, đổi dấu phẩy thành chấm
+                } else {
+                    // Dấu chấm là thập phân, dấu phẩy là phân cách hàng nghìn
+                    cleanedNumStr = cleanedNumStr.replace(/,/g, ''); // Chỉ xóa dấu phẩy
+                }
+            } else {
+                 cleanedNumStr = cleanedNumStr.replace(/,/g, '.'); // Chỉ đổi dấu phẩy thành chấm
+            }
+        } else { // Giả định là định dạng tiếng Anh (dấu chấm là thập phân)
+            cleanedNumStr = cleanedNumStr.replace(/,/g, ''); // Chỉ xóa dấu phẩy (phân cách hàng nghìn)
+        }
+
+        const value = parseFloat(cleanedNumStr);
+
+        // Nếu parseFloat trả về NaN sau khi làm sạch, trả về 1
+        if (isNaN(value)) {
+            return 1;
+        }
+
+        // Bước 2: Nhận diện đơn vị và chuyển đổi sang kilogram (kg)
+        const unitFound = numUnitMatch[2] ? numUnitMatch[2].toLowerCase() : '';
+
+        // Định nghĩa các từ khóa đơn vị và hệ số chuyển đổi tương ứng sang kilogram
+        // Bao gồm cả các từ khóa tiếng Việt và tiếng Anh phổ biến
+        const unitConversionsToKg = {
+            'kg': 1,
+            'kilogram': 1,
+            'kilos': 1, // Tiếng Anh (số nhiều)
+            'ký': 1,    // Tiếng Việt
+
+            'lb': 0.453592,
+            'pound': 0.453592,
+            'pounds': 0.453592, // Tiếng Anh (số nhiều)
+            'pao': 0.453592,   // Tiếng Việt
+            'paol': 0.453592,  // Tiếng Việt
+
+            'g': 0.001,
+            'gram': 0.001,
+            'grams': 0.001, // Tiếng Anh (số nhiều)
+            'gam': 0.001    // Tiếng Việt
+        };
+
+        // Nếu tìm thấy một đơn vị rõ ràng và hợp lệ, sử dụng hệ số chuyển đổi của nó
+        if (unitFound && unitConversionsToKg[unitFound] !== undefined) {
+            return value * unitConversionsToKg[unitFound];
+        }
+
+        // Nếu không tìm thấy đơn vị rõ ràng hoặc không nhận diện được đơn vị,
+        // giả định rằng giá trị gốc là gram và chuyển đổi sang kilogram
+        return value * 0.001;
     };
 
     const calculatePricePerKg = (item) => {
         const price = parseNumericValue(item['Giá niêm yết (VND)']);
-        const weightInGrams = parseWeight(item['Đơn vị tính']);
+        const weightInGrams = parseWeight(item['Khối lượng tịnh']);
         if (weightInGrams === 0 || !price) return 0;
-        return (price / weightInGrams) * 1000;
+        return (price / weightInGrams);
     };
 
     const parseDateString = (dateStr, lang) => {
@@ -912,64 +978,73 @@ document.addEventListener('DOMContentLoaded', function () {
             throw new Error(translations[currentLang].alert_enter_api_key);
         }
 
-        const categories = productTypeSemantic.value_mapping.map(m => m.category_name);
-        const prompt = `
-        Bạn là một chuyên gia phân loại sản phẩm. Tôi sẽ cung cấp cho bạn một danh sách các "loại sản phẩm" thô và một danh sách các "danh mục" chuẩn hóa.
-        Nhiệm vụ của bạn là phân loại mỗi "loại sản phẩm" thô vào một trong các "danh mục" chuẩn hóa đã cho.
-        Nếu một "loại sản phẩm" thô không khớp rõ ràng với bất kỳ danh mục nào, hãy phân loại nó là "Khác".
+        let result;
+        if (productTypeSemantic && productTypeSemantic.value_mapping) {
+            const categories = productTypeSemantic.value_mapping.map(m => m.category_name);
+            const prompt = `
+            Bạn là một chuyên gia phân loại sản phẩm. Tôi sẽ cung cấp cho bạn một danh sách các "loại sản phẩm" thô và một danh sách các "danh mục" chuẩn hóa.
+            Nhiệm vụ của bạn là phân loại mỗi "loại sản phẩm" thô vào một trong các "danh mục" chuẩn hóa đã cho.
+            Nếu một "loại sản phẩm" thô không khớp rõ ràng với bất kỳ danh mục nào, hãy phân loại nó là "Khác".
 
-        Các danh mục chuẩn hóa có sẵn: ${categories.join(', ')}.
+            Các danh mục chuẩn hóa có sẵn: ${categories.join(', ')}.
 
-        Dưới đây là các "loại sản phẩm" thô cần phân loại:
-        ${rawProductTypes.map(type => `- ${type}`).join('\n')}
+            Dưới đây là các "loại sản phẩm" thô cần phân loại:
+            ${rawProductTypes.map(type => `- ${type}`).join('\n')}
 
-        Vui lòng trả về kết quả dưới dạng một mảng JSON, mỗi đối tượng chứa "original_value" và "categorized_value".
-        Ví dụ:
-        [
-          { "original_value": "cà phê robusta nguyên hạt", "categorized_value": "100% Robusta" },
-          { "original_value": "arabica rang xay", "categorized_value": "100% Arabica" },
-          { "original_value": "cà phê pha trộn", "categorized_value": "Blend" },
-          { "original_value": "cà phê đặc biệt ethiopia", "categorized_value": "Specialty/Single Origin" }
-        ]
-        `;
+            Vui lòng trả về kết quả dưới dạng một mảng JSON, mỗi đối tượng chứa "original_value" và "categorized_value".
+            Ví dụ:
+            [
+              { "original_value": "cà phê robusta nguyên hạt", "categorized_value": "100% Robusta" },
+              { "original_value": "arabica rang xay", "categorized_value": "100% Arabica" },
+              { "original_value": "cà phê pha trộn", "categorized_value": "Blend" },
+              { "original_value": "cà phê đặc biệt ethiopia", "categorized_value": "Specialty/Single Origin" }
+            ]
+            `;
 
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
-        
-        const payload = {
-            contents: [{
-                role: "user",
-                parts: [{ text: prompt }]
-            }],
-            generationConfig: {
-                responseMimeType: "application/json",
-                responseSchema: {
-                    type: "ARRAY",
-                    items: {
-                        type: "OBJECT",
-                        properties: {
-                            "original_value": { "type": "STRING" },
-                            "categorized_value": { "type": "STRING" }
-                        },
-                        "propertyOrdering": ["original_value", "categorized_value"]
+            console.log("getGeminiCategorization", prompt);
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`;
+            
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                "original_value": { "type": "STRING" },
+                                "categorized_value": { "type": "STRING" }
+                            },
+                            "propertyOrdering": ["original_value", "categorized_value"]
+                        }
                     }
                 }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
             }
-        };
-
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) {
-            throw new Error(`API request failed with status ${response.status}`);
+            
+            const const_result = await response.json();
+            result = const_result;
+        } else {
+            return {};
         }
 
-        const result = await response.json();
+        
         
         let botResponseText = translations[currentLang].error_ai_response;
-        if (result.candidates && result.candidates.length > 0 &&
+        if (result && result.candidates && result.candidates.length > 0 &&
             result.candidates[0].content && result.candidates[0].content.parts &&
             result.candidates[0].content.parts.length > 0) {
             botResponseText = result.candidates[0].content.parts[0].text;
@@ -1023,6 +1098,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return processedData; // No product types to categorize
         }
 
+        console.log("processCategoricalData", uniqueRawProductTypes);
+        console.log("processCategoricalData", productTypeSemantic);
         try {
             const categorizationMap = await getGeminiCategorization(uniqueRawProductTypes, productTypeSemantic);
             // Apply the categorization from Gemini
@@ -1101,7 +1178,7 @@ document.addEventListener('DOMContentLoaded', function () {
           { "raw_header": "Freeship Threshold", "standard_field": "Ngưỡng Freeship (VND)" },
           { "raw_header": "Source", "standard_field": "Nguồn" },
           { "raw_header": "Coffee Type", "standard_field": "Loại SP" },
-          { "raw_header": "Unit", "standard_field": "Đơn vị tính" },
+          { "raw_header": "Net Weight", "standard_field": "Khối lượng tịnh" },
           { "raw_header": "Location", "standard_field": "Địa phương" },
           { "raw_header": "Product Link", "standard_field": "Link" },
           { "raw_header": "HTML Selector", "standard_field": "HTML" },
@@ -1524,10 +1601,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const updateBrandPriceChart = (data) => {
         const brandData = data.reduce((acc, item) => {
             const brand = item['Thương hiệu'];
-            console.log("updateBrandPriceChart", brand);
+            console.log("updateBrandPriceChart", acc);
+            console.log("updateBrandPriceChart", item);
             console.log("updateBrandPriceChart", brand);
             if (!acc[brand]) acc[brand] = { total_price_per_kg: 0, count: 0 };
             const pricePerKg = calculatePricePerKg(item);
+            console.log("updateBrandPriceChart", pricePerKg);
             if(pricePerKg > 0) {
                 acc[brand].total_price_per_kg += pricePerKg;
                 acc[brand].count++;
@@ -2412,7 +2491,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     { colId: 'TMĐT', minWidth: 120 },
                     { colId: 'Nguồn', minWidth: 100 },
                     { colId: 'Loại SP', minWidth: 120 },
-                    { colId: 'Đơn vị tính', minWidth: 100 },
+                    { colId: 'Khối lượng tịnh', minWidth: 100 },
                     { colId: 'Địa phương', minWidth: 100 },
                 ]
             }
@@ -2658,7 +2737,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     "Nguồn": rowData[translations[currentLang].col_source] || '',
                     "Link": rowData[translations[currentLang].col_link] || '',
                     "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
-                    "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                    "Khối lượng tịnh": rowData[translations[currentLang].col_unit] || '',
                     "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
                     "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
                     "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
@@ -2739,15 +2818,16 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 reader.onload = function(e) {
                     try {
                         columnSemantics = JSON.parse(e.target.result);
-                        alert('Đã tải ngữ nghĩa cột từ tệp JSON.');
+                        alert(translations[currentLang].alert_json_import_done);
                     } catch (parseError) {
-                        alert('Lỗi phân tích tệp JSON: ' + parseError.message);
+                        alert(translations[currentLang].alert_json_parsing_error + parseError.message);
+                        
                         console.error('Lỗi phân tích tệp JSON:', parseError);
                     }
                 };
                 reader.readAsText(jsonFile, 'UTF-8');
             } catch (error) {
-                alert('Lỗi khi đọc tệp JSON: ' + error.message);
+                alert(translations[currentLang].alert_json_reading_error + error.message);
                 console.error('Lỗi khi đọc tệp JSON:', error);
             }
         }
@@ -2807,7 +2887,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                             "Nguồn": rowData[translations[currentLang].col_source] || '',
                             "Link": rowData[translations[currentLang].col_link] || '',
                             "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
-                            "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                            "Khối lượng tịnh": rowData[translations[currentLang].col_unit] || '',
                             "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
                             "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
                             "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
@@ -2825,8 +2905,12 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
 
                     let headerMap;
                     try {
+                        console.log("tocsv", header);
+                        console.log("tocsv", standardSstFields);
+                        console.log("tocsv", columnSemantics);
+                        
                         // Call the new standardization function, passing columnSemantics
-                        headerMap = standardizeCsvHeadersWithGemini(header, standardSstFields, columnSemantics); 
+                        headerMap = await standardizeCsvHeadersWithGemini(header, standardSstFields, columnSemantics); 
                         console.log("Header mapping from Gemini:", headerMap);
                     } catch (error) {
                         console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
@@ -2882,7 +2966,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                             "Nguồn": rowData[translations[currentLang].col_source] || '',
                             "Link": rowData[translations[currentLang].col_link] || '',
                             "Loại SP": rowData[translations[currentLang].col_coffee_type] || '',
-                            "Đơn vị tính": rowData[translations[currentLang].col_unit] || '',
+                            "Khối lượng tịnh": rowData[translations[currentLang].col_unit] || '',
                             "Giá niêm yết (VND)": rowData[translations[currentLang].col_list_price],
                             "Phí ship (VND)": rowData[translations[currentLang].col_shipping_fee],
                             "Ngưỡng Freeship (VND)": rowData[translations[currentLang].col_freeship_threshold],
@@ -2986,7 +3070,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
           "Nguồn": row["Nguồn"],
           "Link": row["Link"],
           "Loại SP": row["Loại SP"],
-          "Đơn vị tính": row["Đơn vị tính"],
+          "Khối lượng tịnh": row["Khối lượng tịnh"],
           "Giá niêm yết (VND)": row["Giá niêm yết (VND)"],
           "Phí ship (VND)": row["Phí ship (VND)"],
           "Ngưỡng Freeship (VND)": row["Ngưỡng Freeship (VND)"],
