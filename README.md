@@ -126,7 +126,7 @@ Dự án đã được cấu hình để triển khai trên Render thông qua fi
 
 Dự án này được cấp phép dưới Giấy phép Apache 2.0.
 
-Điều này có nghĩa là bạn được tự do sử dụng, sửa đổi và phân phối mã nguồn cho bất kỳ mục đích nào, kể cả mục đích thương mại, miễn là tuân thủ các điều kiện được nêu trong giấy phép. Để xem toàn bộ nội dung giấy phép, vui lòng đọc file `LICENSE`.
+Điều này có nghĩa là bạn được tự do sử dụng, sửa đổi và phân phối mã nguồn cho bất kỳ mục đích nào, kể cả mục đích thương mại, miễn là tuân thủ các điều kiện được nêu trong giấy phép. Để xem toàn bộ nội dung giấy phép, vui lòng đọc file [`LICENSE`](LICENSE).
 
 ## Hỗ trợ tác giả
 
