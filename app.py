@@ -1,20 +1,26 @@
 import os
 import platform
+import sys
 
-DEFAULT_MODE = "selenium" if platform.system() == "Windows" else "bs4"
+DEFAULT_MODE = "cloak"
 import re
 import requests
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from bs4 import BeautifulSoup
+from providers.shopee import (
+    extract_price_shopee,
+    http_status_for as shopee_http_status_for,
+    is_shopee_url,
+    verify_price_shopee,
+)
 
-# Selenium imports
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+# CloakBrowser imports
+from cloakbrowser import launch
+
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
 
 app = Flask(__name__)
 CORS(app)
@@ -23,52 +29,47 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 }
 
-# ========== SELENIUM ==========
+# ========== CLOAKBROWSER ==========
 
-def get_chrome_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-infobars")
-    chrome_options.add_argument("--remote-debugging-port=9222")
-    service = Service()
-    return webdriver.Chrome(service=service, options=chrome_options)
+def get_cloak_browser():
+    proxy = os.environ.get("CLOAK_PROXY")
+    proxy_dict = {"server": proxy} if proxy else None
+    # Default to headless=True as requested, with humanize=True for stealth
+    return launch(headless=True, humanize=True, proxy=proxy_dict)
 
-def extract_price_selenium(url: str, selector: str):
-    driver = None
+def extract_price_cloak(url: str, selector: str):
+    browser = None
     try:
-        driver = get_chrome_driver()
-        driver.get(url)
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-        )
-        price_text = driver.find_element(By.CSS_SELECTOR, selector).text
+        browser = get_cloak_browser()
+        page = browser.new_page()
+        page.goto(url, timeout=30000)
+        page.wait_for_selector(selector, timeout=20000)
+        price_text = page.locator(selector).first.inner_text()
         numbers = re.findall(r'\d+', price_text.replace('.', '').replace(',', ''))
         if numbers:
             return int("".join(numbers))
     except Exception as e:
-        print(f"[Selenium] Lỗi trích xuất {url}: {e}")
+        print(f"[Cloak] Lỗi trích xuất {url}: {e}")
     finally:
-        if driver:
-            driver.quit()
+        if browser:
+            browser.close()
     return None
 
-def verify_price_selenium(url: str, price: int):
-    driver = None
+def verify_price_cloak(url: str, price: int):
+    browser = None
     try:
-        driver = get_chrome_driver()
-        driver.get(url)
-        WebDriverWait(driver, 20).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        driver.quit()
+        browser = get_cloak_browser()
+        page = browser.new_page()
+        page.goto(url, timeout=30000)
+        page.wait_for_load_state('networkidle', timeout=30000)
+        html_content = page.content()
+        soup = BeautifulSoup(html_content, 'html.parser')
+        browser.close()
         return _verify_price_from_soup(soup, price)
     except Exception as e:
-        print(f"[Selenium] Lỗi xác minh {url}: {e}")
-        if driver:
-            driver.quit()
+        print(f"[Cloak] Lỗi xác minh {url}: {e}")
+        if browser:
+            browser.close()
         return {"passed": False, "min_count": -1}
 
 # ========== BS4 ==========
@@ -108,9 +109,9 @@ def _verify_price_from_soup(soup, price: int):
     formatted_price_comma = f"{price:,}"
 
     patterns_to_check = {
-        "dot_separator": r'\b' + re.escape(formatted_price_dot) + r'\b',
-        "comma_separator": r'\b' + re.escape(formatted_price_comma) + r'\b',
-        "no_separator": r'\b' + re.escape(price_str) + r'\b'
+        "dot_separator": r'(?<!\d)' + re.escape(formatted_price_dot) + r'(?!\d)',
+        "comma_separator": r'(?<!\d)' + re.escape(formatted_price_comma) + r'(?!\d)',
+        "no_separator": r'(?<!\d)' + re.escape(price_str) + r'(?!\d)'
     }
 
     counts = {}
@@ -132,17 +133,25 @@ def handle_check_price():
     data = request.get_json()
     url = data.get('url')
     selector = data.get('selector')
-    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định selenium
+    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định cloak
 
-    if not url or not selector:
+    if not url or (not selector and not (mode != 'bs4' and is_shopee_url(url))):
         return jsonify({"error": "Thiếu URL hoặc bộ chọn"}), 400
 
     print(f"[Check Price] URL: {url}, Selector: {selector}, Mode: {mode}")
 
+    if mode != 'bs4' and is_shopee_url(url):
+        result = extract_price_shopee(url, selector)
+        response = result.to_response()
+        if result.price is not None:
+            return jsonify(response), shopee_http_status_for(result, "extract")
+        response["error"] = response.get("error") or f"Shopee extraction status: {result.status}"
+        return jsonify(response), shopee_http_status_for(result, "extract")
+
     if mode == 'bs4':
         price = extract_price_bs4(url, selector)
     else:
-        price = extract_price_selenium(url, selector)
+        price = extract_price_cloak(url, selector)
 
     if price is not None:
         return jsonify({"price": price})
@@ -153,17 +162,33 @@ def handle_verify_price():
     data = request.get_json()
     url = data.get('url')
     price = data.get('price')
-    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định selenium
+    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định cloak
 
     if not url or price is None:
         return jsonify({"error": "Thiếu URL hoặc giá để xác minh"}), 400
 
+    try:
+        price = int(str(price).replace(".", "").replace(",", ""))
+    except ValueError:
+        return jsonify({"error": "Gia khong hop le"}), 400
+
     print(f"[Verify Price] URL: {url}, Price: {price}, Mode: {mode}")
+
+    if mode != 'bs4' and is_shopee_url(url):
+        result = verify_price_shopee(url, price)
+        response = result.to_response()
+        response.update({
+            "found_uniquely": result.passed,
+            "match_count": result.match_count,
+        })
+        if result.status not in {"ok", "price_changed"}:
+            response["error"] = response.get("error") or f"Shopee verification status: {result.status}"
+        return jsonify(response), shopee_http_status_for(result, "verify")
 
     if mode == 'bs4':
         result = verify_price_bs4(url, price)
     else:
-        result = verify_price_selenium(url, price)
+        result = verify_price_cloak(url, price)
 
     return jsonify({
         "found_uniquely": result["passed"],

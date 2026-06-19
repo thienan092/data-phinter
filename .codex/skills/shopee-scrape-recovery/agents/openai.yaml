@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shopee Scrape Recovery"
+  short_description: "Diagnose and recover brittle Shopee scraping failures"
+  default_prompt: "Use $shopee-scrape-recovery to analyze this Shopee scraping failure artifact and propose a bounded fix."
