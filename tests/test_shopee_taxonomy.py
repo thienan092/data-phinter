@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 class ShopeeTaxonomyTests(unittest.TestCase):
     def test_current_taxonomy_reclassifies_saved_captcha_artifact(self):
         artifact_path = (
-            ROOT / "diagnostics" / "shopee" / "20260619-092233" / "artifact.json"
+            ROOT / "tests" / "fixtures" / "shopee" / "captcha_artifact.json"
         )
         artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
 

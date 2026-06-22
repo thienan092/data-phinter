@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "provider": "shopee",
+  "strategy": "headful_persistent",
+  "error": null,
+  "response_status": 200,
+  "final_url": "https://shopee.invalid/verify/captcha?challenge=redacted",
+  "title": "Shopee verification",
+  "body_text_len": 116,
+  "body_excerpt": "Load error. Please try again.",
+  "price_candidate_count": 0,
+  "price_candidates_sample": [],
+  "product_link_count": 0,
+  "product_links_sample": [],
+  "classification": "access_blocked_or_session_required",
+  "recommended_next_actions": [
+    "Use an authorized user-seeded persistent session.",
+    "Keep captcha separate from selector failures."
+  ]
+}
