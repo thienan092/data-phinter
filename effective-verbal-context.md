@@ -79,6 +79,9 @@ rather than rewriting the handoff.
   exact missing capability.
 - Solve, classify, or reject problem rows (selector / recipe / direct URL / intervention) — do not
   hand back raw symptoms.
+- Keep tests self-contained for a fresh clone: use committed sanitized fixtures (e.g.
+  `tests/fixtures/`), never gitignored captures (`diagnostics/`, browser profiles); do not skip a
+  check when its fixture is absent — skipping passes the suite but drops the regression for a stranger.
 
 ## Where things live
 
