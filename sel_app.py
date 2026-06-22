@@ -1,3 +1,8 @@
+# =============================================================================
+# LEGACY / REFERENCE ONLY — deprecated Selenium app, superseded by app.py.
+# Kept for historical reference; it does NOT include the current agent and
+# accumulation APIs. Do not run this in place of, or rename it over, app.py.
+# =============================================================================
 import os
 import re
 from flask import Flask, request, jsonify, send_from_directory

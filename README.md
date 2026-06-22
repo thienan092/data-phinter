@@ -8,7 +8,7 @@
 
 Dự án này cung cấp các chức năng cơ bản nhất để có thể tận dụng tính năng **Deep Research của Gemini như là một công cụ sinh dữ liệu chất lượng cao** dùng cho việc quan sát thị trường trực tuyến, đồng thời tích hợp cơ chế **tự động hóa việc kiểm chứng dữ liệu tại nguồn trích dẫn** nhằm giám sát những sự thay đổi về giá sản phẩm và loại bỏ/chỉnh sửa các kết quả bị sai sót trong quá trình thu thập dữ liệu hoặc bị ảnh hưởng bởi hiện tượng "hallucination".
 
-Hơn nữa, toàn bộ mã nguồn và giao diện người dùng cũng được "làm phẳng" và nằm trong phạm vi hiểu của các chatbot (dưới 3k dòng lệnh), giúp nó có thể được điều chỉnh thông qua quy trình prompting để có thể **tương thích với các loại dữ liệu thị trường** khác ngoài cà phê.
+Hơn nữa, mã nguồn và giao diện được tổ chức theo các điểm vào, skill và tài liệu kiến trúc có thể tra cứu, giúp agent điều chỉnh ứng dụng qua quy trình prompting để **tương thích với các loại dữ liệu thị trường** khác ngoài cà phê. Không dựa vào một giới hạn số dòng cố định; hãy dùng các liên kết ngữ nghĩa ở phần Agent Entry Point.
 
 ---
 
@@ -18,7 +18,68 @@ Hơn nữa, toàn bộ mã nguồn và giao diện người dùng cũng được
 
 This project provides the most basic functionalities to leverage Gemini's **Deep Research feature as a high-quality data generation tool** for online market observation, while integrating an **automated data verification mechanism at the citation source** to monitor product price changes and eliminate/correct erroneous results during data collection or those affected by "hallucination".
 
-Furthermore, the entire source code and user interface are "flattened" and within the comprehension scope of chatbots (under 3k lines of code), allowing for adjustments through prompting to be **compatible with various market data types** beyond coffee.
+Furthermore, source and UI behavior are organized through discoverable entry points, skills, and architecture references, allowing agents to adapt the application through prompting for **various market data types** beyond coffee. Do not rely on a fixed line-count claim; use the semantic links under Agent Entry Point.
+
+---
+
+## Agent Entry Point And Stranger Audit
+
+An agent that is completely new to this project must start by reading this README, then use
+[read-effective-verbal-context](.codex/skills/read-effective-verbal-context/) to recover the project's
+starting state from [STARTER-CONTEXT.md](STARTER-CONTEXT.md). The skill should reconcile that context
+with current source, config, tests, and artifacts instead of treating prose as unquestionable.
+
+Suggested prompt (rephrasing is allowed):
+
+> Read this README, then use `read-effective-verbal-context` to recover the project objective,
+> top-level workstreams and responsible skills, active constraints, current state, artifacts,
+> closed work, optional branches, conflicts, and next entry points. Verify material claims against
+> source/config and give me a compact project map before continuing.
+
+Anti-prompt: do **not** merely summarize the README, rely on previous chat, trust the handoff over
+source/config, assume every selected artifact is complete, or automatically execute all open branches.
+
+The first map to read after recovery is the plugin's
+[short workflow overview](plugins/data-phinter-workflows/references/overview.md). Use the
+[detailed architecture](plugins/data-phinter-workflows/references/architecture.md) only when deeper
+mechanics are needed. The independent **Stranger audit** evaluates the plugin from outside under this
+README-first condition; it is not a component of the plugin.
+
+The audit evaluates accessibility in the current workspace. Publication, installation, and
+reproducibility from a committed checkout are separate release gates. During a blind audit round,
+prior audit reports may be temporarily withheld so they cannot reveal the expected discovery path;
+their temporary absence may be recorded as unverified history, but is not missing plugin context.
+
+The plugin exposes four skills: context recovery, NotebookLM generation, app-owned candidate intake,
+and Shopee recovery. `write-effective-verbal-context` is intentionally retained by the project owner
+outside the plugin. A stranger may report documentation or architecture deltas, but must not assume
+access to that owner-held skill.
+
+The app's **Accumulate approved unique** control is also intentionally agent-only. It stays hidden in
+normal mode and appears only with `?agent=1`. It commits the already approved `unique` verification
+artifact into the configured default CSV, deduplicates Links, creates a backup, atomically replaces
+the file, and records events. It does not accumulate arbitrary grid contents. Before commit, the
+workflow must report the preview and obtain a matching post-report decision; the backend rejects a
+commit without that recorded approval. Information parity is carried by the report, decision,
+preview counts, backup, before/after counts, and terminal result, not by showing automation controls
+to normal users.
+
+### Điểm vào dành cho agent
+
+Agent hoàn toàn mới phải đọc README này trước, sau đó dùng skill
+[read-effective-verbal-context](.codex/skills/read-effective-verbal-context/) để phục hồi trạng thái khởi đầu từ
+[STARTER-CONTEXT.md](STARTER-CONTEXT.md). Agent có thể tự diễn đạt prompt, nhưng kết
+quả cần chỉ ra được các luồng công việc chính, skill phụ trách, ranh giới, artifact, việc đã đóng,
+nhánh tùy chọn, xung đột và điểm vào tiếp theo; không chỉ tóm tắt README hoặc dựa vào chat cũ.
+
+Sơ đồ đầu tiên cần đọc là [tổng quan workflow ngắn](plugins/data-phinter-workflows/references/overview.md);
+[kiến trúc chi tiết](plugins/data-phinter-workflows/references/architecture.md) là tầng tra cứu tiếp theo.
+Stranger audit là phép kiểm định độc lập từ bên ngoài plugin.
+
+Audit đánh giá khả năng tiếp cận trong workspace hiện tại. Publication, installation và khả năng tái
+tạo từ một committed checkout là các release gate riêng. Trong một blind audit, báo cáo của các vòng
+trước có thể được tạm giữ ngoài workspace để không làm lộ đường khám phá kỳ vọng; khi đó lịch sử audit
+có thể được ghi là chưa kiểm chứng, nhưng không được coi là context của plugin bị thiếu.
 
 ---
 
@@ -33,10 +94,36 @@ Furthermore, the entire source code and user interface are "flattened" and withi
 # 🚀 Tính năng chính / Key Features
 
 ### 🇻🇳 Cấu trúc file dữ liệu (.csv) đầu vào
-* Xem `sample_data.csv`.
+* Xem file được khai báo tại `config/default-data.json` (hiện là `sample_data.csv`).
+* Người dùng vẫn có thể dùng **Thêm dữ liệu** để nhập một CSV tức thời; thao tác đó không đổi file mặc định.
+* Chế độ hỗ trợ agent (`?agent=1`) hiện một điều khiển riêng để nạp file mặc định đã cấu hình.
+* Tập ứng viên đang được chọn được khai báo tại `config/current-candidate.json`; hãy đọc cả trường
+  `status`/`strict_complete` trước khi coi nó là một run hoàn tất. Chế độ agent có điều khiển riêng để nạp nó sau dữ liệu mặc định.
+* Trước khi xác minh, agent chạy skill `app-sst-candidate-intake` để audit bất thường. Cảnh báo
+  mức `review` hoặc `blocker` phải được báo cho người dùng quyết định thay vì tự động bỏ qua.
+* Sau kiểm chứng, agent chạy **Báo cáo, phân tích và góp ý/cải thiện** như một cổng quyết định;
+  chỉ thực hiện tích lũy, sửa trang hoặc tối ưu tùy chọn sau khi người dùng chọn nhánh.
+* Báo cáo xuyên suốt quy trình thuộc agent, không phải một bảng báo cáo trong ứng dụng.
+  Nếu cần thêm bề mặt báo cáo mới vào ứng dụng, agent phải đề xuất và nhận xác nhận trước.
+* Trong báo cáo sau kiểm chứng, agent đưa ra nhánh mở từng trang có vấn đề để sửa giá và phương pháp trích xuất;
+  phương pháp có thể là selector ổn định hoặc công thức thích nghi tùy độ biến động của trang.
+* Luồng agent dùng trạng thái ẩn trong DOM (`#agent-import-status`) và log JSON tiền tố
+  `[agent-import]`, nên automation tiếp cận cùng thông tin nghiệp vụ mà không thêm chi tiết kỹ thuật vào UI.
 
 ### 🇬🇧 Input Data File Structure
-* See `sample_data.csv`.
+* See the file declared in `config/default-data.json` (currently `sample_data.csv`).
+* Users can still use **Add Data** for an ad-hoc CSV; doing so does not change the configured default.
+* Agent-assisted mode (`?agent=1`) exposes a separate control for loading the configured default file.
+* The selected candidate artifact is declared in `config/current-candidate.json`; read its
+  `status`/`strict_complete` metadata before treating it as a completed run. Agent mode exposes a separate control for loading it after the default data.
+* Before verification, the agent runs `app-sst-candidate-intake` to audit anomalies. `review` or
+  `blocker` findings require a user decision instead of silent continuation.
+* After verification, **Report, analyze, and advise/improve** is the decision gate. Accumulation,
+  page repair, and optional optimization run only after the user chooses a branch.
+* Cross-workflow reporting belongs to the agent, not an in-app reporting panel.
+  Adding a new reporting surface to the app requires a proposal and user approval first.
+* Agent imports publish hidden DOM status (`#agent-import-status`) and JSON console logs prefixed
+  with `[agent-import]`, giving automation equivalent operational information without adding technical UI.
 
 ---
 
@@ -51,11 +138,11 @@ Furthermore, the entire source code and user interface are "flattened" and withi
 ---
 
 ### 🇻🇳 Cập nhật Giá Tự động
-* Sử dụng Selenium/BS4 để truy cập các URL sản phẩm và **tự động thu thập dữ liệu giá mới nhất**.
+* Sử dụng BS4 cho trang tĩnh và CloakBrowser/provider chuyên biệt cho trang động hoặc bị chặn để **tự động thu thập dữ liệu giá mới nhất**.
 * Các tác vụ được quản lý trong một hàng đợi trực quan, cho phép người dùng **kiểm chứng dữ liệu tai nguồn, theo dõi tiến trình và xử lý các thay đổi về giá**.
 
 ### 🇬🇧 Automatic Price Updates
-* Uses Selenium/BS4 to access product URLs and **automatically collect the latest price data**.
+* Uses BS4 for static pages and CloakBrowser/provider-specific handling for dynamic or blocked pages to **automatically collect the latest price data**.
 * Tasks are managed in a visual queue, allowing users to **verify data at the source, track progress, and handle price changes**.
 
 ---
@@ -101,10 +188,10 @@ Furthermore, the entire source code and user interface are "flattened" and withi
 # 🔒 Bảo mật và Tin cậy / Security and Reliability
 
 ### 🇻🇳 Quản lý Trình duyệt Tự động
-* Ứng dụng sử dụng thư viện Selenium Manager (bản stable) và BeautifulSoup4 (bản speed) của Python để **tự động quản lý phiên bản trình duyệt**, loại bỏ hoàn toàn nhu cầu tải thủ công các file thực thi (như `chromedriver.exe`) và **đảm bảo hoạt động ổn định**.
+* Ứng dụng dùng CloakBrowser/Playwright cho luồng trình duyệt và BeautifulSoup4 cho luồng HTML tĩnh. Các trạng thái captcha, đăng nhập, chặn truy cập và lỗi selector được phân biệt thay vì gộp thành một lỗi lấy giá.
 
 ### 🇬🇧 Automatic Browser Management
-* The application uses Python's Selenium Manager (stable version) and BeautifulSoup4 (speed version) libraries to **automatically manage browser versions**, completely eliminating the need for manual downloads of executable files (like `chromedriver.exe`) and **ensuring stable operation**.
+* The application uses CloakBrowser/Playwright for browser flows and BeautifulSoup4 for static HTML. Captcha, login, access blocking, and selector failures remain distinct operational states.
 
 ---
 
@@ -160,14 +247,15 @@ Furthermore, the entire source code and user interface are "flattened" and withi
     ```bash
     pip install -r requirements.txt
     ```
-5.  **Chuyển đổi sang bản stable (khuyến khích):**
-    Xóa file `app.py` và đổi tên file `sel_app.py` thành `app.py`
-6.  **Chạy ứng dụng:**
+5.  **Giữ implementation hiện hành:** `app.py` là ứng dụng được hỗ trợ và chứa các API agent/accumulation hiện tại. `sel_app.py` (app Selenium cũ) và `live_test.py` (helper smoke-test CloakBrowser thủ công) chỉ để tham khảo; không đổi tên hoặc ghi đè lên `app.py`.
+6.  **Chạy ứng dụng trên cổng mặc định 5000:**
     ```bash
-    flask run
+    python app.py
     ```
-7.  **Truy cập ứng dụng:**
-    Mở trình duyệt và truy cập địa chỉ: `http://127.0.0.1:5000`
+    Nếu cổng 5000 đang bận, đặt biến `PORT` thành một cổng trống (ví dụ PowerShell:
+    `$env:PORT=5002; python app.py`) và dùng chính URL đã chọn.
+7.  **Truy cập ứng dụng:** mở `http://127.0.0.1:5000`; chế độ automation của agent là
+    `http://127.0.0.1:5000/?agent=1`. Thay `5000` bằng giá trị `PORT` nếu đã đổi cổng.
 
 ### 🇬🇧 Steps
 1.  **Fork the project**: Access the GitHub repository of this project and click the **"Fork"** button in the top right corner to create a copy of the project to your GitHub account.
@@ -191,14 +279,15 @@ Furthermore, the entire source code and user interface are "flattened" and withi
     ```bash
     pip install -r requirements.txt
     ```
-5.  **Switch to the stable version (recommended):**
-    Delete the `app.py` file and rename `sel_app.py` to `app.py`
-6.  **Run the application:**
+5.  **Keep the current implementation:** `app.py` is the supported application and owns the current agent/accumulation APIs. `sel_app.py` (a legacy Selenium app) and `live_test.py` (a manual CloakBrowser smoke-test helper) are kept for reference only; do not rename them over `app.py`.
+6.  **Run the application on default port 5000:**
     ```bash
-    flask run
+    python app.py
     ```
-7.  **Access the application:**
-    Open your browser and go to: `http://127.0.0.1:5000`
+    If port 5000 is occupied, set `PORT` to a free port (for example in PowerShell:
+    `$env:PORT=5002; python app.py`) and use that same URL.
+7.  **Access the application:** open `http://127.0.0.1:5000`; agent automation mode is
+    `http://127.0.0.1:5000/?agent=1`. Replace `5000` with the chosen `PORT` when overridden.
 
 ---
 
@@ -207,12 +296,12 @@ Furthermore, the entire source code and user interface are "flattened" and withi
 ### 🇻🇳 Cấu hình triển khai
 Dự án đã được cấu hình để triển khai trên Render thông qua file `render.yaml`. Cấu hình này bao gồm:
 * Sử dụng `gunicorn` để chạy ứng dụng web production.
-* Tự động cài đặt Google Chrome thông qua buildpack để phục vụ cho các tác vụ của Selenium.
+* Giữ buildpack Chrome hiện có cho các tác vụ trình duyệt; cần xác minh khả năng tương thích CloakBrowser/Playwright trước mỗi lần triển khai.
 
 ### 🇬🇧 Deployment Configuration
 The project is configured for deployment on Render via the `render.yaml` file. This configuration includes:
 * Using `gunicorn` to run the production web application.
-* Automatic installation of Google Chrome via buildpack for Selenium tasks.
+* Keeps the current Chrome buildpack for browser tasks; verify CloakBrowser/Playwright compatibility before each deployment.
 
 ---
 
@@ -224,7 +313,7 @@ The project is configured for deployment on Render via the `render.yaml` file. T
 4. **Chọn kho chứa:** Tìm và chọn kho chứa GitHub của dự án *data-phinter* của bạn.
 5. **Cấu hình dịch vụ Web:**
    * **Tên (Name):** Đặt một tên dễ nhớ cho dịch vụ của bạn (ví dụ: `coffee-market-analysis`).
-   * **Instance Type:** Cấu hình tối thiểu cho dự án là **Free**.
+   * **Instance Type:** `render.yaml` hiện khai báo gói **Starter**; thay đổi gói chỉ sau khi kiểm tra nhu cầu và cấu hình Render hiện hành.
    * **Kiểu Dịch vụ (Service Type):** Chọn `"Web Service"`.
    * **Khu vực (Region):** Chọn khu vực gần người dùng của bạn nhất (Singapore nếu bạn ở Việt Nam).
    * **Các trường khác vẫn giữ mặc định**.
@@ -239,12 +328,28 @@ To deploy the project to Render via GitHub, follow these steps:
 4. **Select repository:** Find and select your *data-phinter* project's GitHub repository.
 5. **Configure Web Service:**
    * **Name:** Give your service a memorable name (e.g., `coffee-market-analysis`).
-   * **Instance Type:** The minimum configuration for the project is **Free**.
+   * **Instance Type:** `render.yaml` currently declares the **Starter** plan; change it only after reviewing current workload and Render configuration.
    * **Service Type:** Select `"Web Service"`.
    * **Region:** Choose the region closest to your users (Singapore if you are in Vietnam).
    * **Other fields remain at their default settings**.
 6. **Create Web Service:** Click `"Deploy Web Service"`. Render will automatically start the deployment process, installing dependencies and running your application. You can monitor the progress in the deployment logs.
 7. **Access the application:** After successful deployment, Render will provide a public URL (`https://coffee-market-analysis.onrender.com` in this case) for your application.
+
+---
+
+# ⚠️ Sử dụng có trách nhiệm / Responsible Use
+
+### 🇻🇳
+Đây là công cụ phục vụ **nghiên cứu và quan sát thị trường cho mục đích được phép**. Khi sử dụng:
+* Tôn trọng Điều khoản dịch vụ (ToS) và `robots.txt` của mỗi trang nguồn; chỉ thu thập dữ liệu công khai ở mức hợp lý, tránh gây tải bất thường.
+* Các luồng khôi phục cho trang có thử thách đăng nhập/bot (ví dụ `shopee-scrape-recovery`, hồ sơ trình duyệt cục bộ) chỉ dùng cho **phiên hợp pháp của chính bạn và khi được ủy quyền**. Không bao giờ commit hồ sơ trình duyệt, cookie hay thông tin đăng nhập.
+* Bạn chịu trách nhiệm tuân thủ pháp luật và quy định áp dụng tại khu vực của mình.
+
+### 🇬🇧
+This is a tool for **authorized market research and observation**. When using it:
+* Respect each source site's Terms of Service and `robots.txt`; collect only public data at a reasonable rate and avoid abnormal load.
+* Challenge-recovery flows for login/bot-walled sites (e.g. `shopee-scrape-recovery`, local browser profiles) are for **your own authorized sessions only**. Never commit browser profiles, cookies, or credentials.
+* You are responsible for complying with the laws and regulations applicable in your jurisdiction.
 
 ---
 

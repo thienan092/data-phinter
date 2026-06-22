@@ -1,74 +1,128 @@
 import os
 import platform
+import sys
+import json
+import csv
+from pathlib import Path
+from app_accumulation import build_accumulation_plan, commit_accumulation
 
-DEFAULT_MODE = "selenium" if platform.system() == "Windows" else "bs4"
+DEFAULT_MODE = "cloak"
 import re
 import requests
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, redirect, send_file, send_from_directory
 from flask_cors import CORS
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
+from manual_actions import get_manual_action, record_client_event, record_verification_url_opened
+from providers.shopee import (
+    extract_price_shopee,
+    http_status_for as shopee_http_status_for,
+    is_shopee_url,
+    verify_price_shopee,
+)
 
-# Selenium imports
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+# CloakBrowser imports
+from cloakbrowser import launch
+
+for stream in (sys.stdout, sys.stderr):
+    if hasattr(stream, "reconfigure"):
+        stream.reconfigure(encoding="utf-8", errors="replace")
 
 app = Flask(__name__)
 CORS(app)
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+DEFAULT_DATA_CONFIG = PROJECT_ROOT / "config" / "default-data.json"
+CANDIDATE_DATA_CONFIG = PROJECT_ROOT / "config" / "current-candidate.json"
+VERIFICATION_CONFIG = PROJECT_ROOT / "config" / "current-verification.json"
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 }
 
-# ========== SELENIUM ==========
+# ========== CLOAKBROWSER ==========
 
-def get_chrome_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("--disable-extensions")
-    chrome_options.add_argument("--disable-infobars")
-    chrome_options.add_argument("--remote-debugging-port=9222")
-    service = Service()
-    return webdriver.Chrome(service=service, options=chrome_options)
+def get_cloak_browser():
+    proxy = os.environ.get("CLOAK_PROXY")
+    proxy_dict = {"server": proxy} if proxy else None
+    # Default to headless=True as requested, with humanize=True for stealth
+    return launch(headless=True, humanize=True, proxy=proxy_dict)
 
-def extract_price_selenium(url: str, selector: str):
-    driver = None
-    try:
-        driver = get_chrome_driver()
-        driver.get(url)
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-        )
-        price_text = driver.find_element(By.CSS_SELECTOR, selector).text
-        numbers = re.findall(r'\d+', price_text.replace('.', '').replace(',', ''))
-        if numbers:
-            return int("".join(numbers))
-    except Exception as e:
-        print(f"[Selenium] Lỗi trích xuất {url}: {e}")
-    finally:
-        if driver:
-            driver.quit()
+
+def _price_from_jsonld(soup):
+    for script in soup.select("script[type='application/ld+json']"):
+        try:
+            root = json.loads(script.string or script.get_text())
+        except (TypeError, json.JSONDecodeError):
+            continue
+        stack = root if isinstance(root, list) else [root]
+        while stack:
+            node = stack.pop()
+            if isinstance(node, list):
+                stack.extend(node)
+                continue
+            if not isinstance(node, dict):
+                continue
+            node_type = node.get("@type")
+            if node_type == "Product" or (isinstance(node_type, list) and "Product" in node_type):
+                offers = node.get("offers")
+                offer_list = offers if isinstance(offers, list) else [offers]
+                for offer in offer_list:
+                    if not isinstance(offer, dict):
+                        continue
+                    for key in ("price", "lowPrice"):
+                        value = offer.get(key)
+                        digits = re.sub(r"[^0-9]", "", str(value or ""))
+                        if digits:
+                            return int(digits)
+            stack.extend(value for value in node.values() if isinstance(value, (dict, list)))
     return None
 
-def verify_price_selenium(url: str, price: int):
-    driver = None
+
+def _extract_price_from_soup(soup, selector):
+    if selector == "jsonld:Product.offers.price":
+        return _price_from_jsonld(soup)
+
+    css_selector, separator, attribute = selector.partition("::")
+    price_element = soup.select_one(css_selector)
+    if not price_element:
+        return None
+    price_text = price_element.get(attribute) if separator else price_element.get_text()
+    numbers = re.findall(r"\d+", str(price_text or "").replace(".", "").replace(",", ""))
+    return int("".join(numbers)) if numbers else None
+
+
+def extract_price_cloak(url: str, selector: str):
+    browser = None
     try:
-        driver = get_chrome_driver()
-        driver.get(url)
-        WebDriverWait(driver, 20).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-        soup = BeautifulSoup(driver.page_source, 'html.parser')
-        driver.quit()
+        browser = get_cloak_browser()
+        page = browser.new_page()
+        page.goto(url, timeout=30000)
+        page.wait_for_load_state('networkidle', timeout=30000)
+        soup = BeautifulSoup(page.content(), 'html.parser')
+        return _extract_price_from_soup(soup, selector)
+    except Exception as e:
+        print(f"[Cloak] Lỗi trích xuất {url}: {e}")
+    finally:
+        if browser:
+            browser.close()
+    return None
+
+def verify_price_cloak(url: str, price: int):
+    browser = None
+    try:
+        browser = get_cloak_browser()
+        page = browser.new_page()
+        page.goto(url, timeout=30000)
+        page.wait_for_load_state('networkidle', timeout=30000)
+        html_content = page.content()
+        soup = BeautifulSoup(html_content, 'html.parser')
+        browser.close()
         return _verify_price_from_soup(soup, price)
     except Exception as e:
-        print(f"[Selenium] Lỗi xác minh {url}: {e}")
-        if driver:
-            driver.quit()
+        print(f"[Cloak] Lỗi xác minh {url}: {e}")
+        if browser:
+            browser.close()
         return {"passed": False, "min_count": -1}
 
 # ========== BS4 ==========
@@ -78,12 +132,7 @@ def extract_price_bs4(url: str, selector: str):
         response = requests.get(url, headers=HEADERS, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, 'html.parser')
-        price_element = soup.select_one(selector)
-        if price_element:
-            price_text = price_element.get_text()
-            numbers = re.findall(r'\d+', price_text.replace('.', '').replace(',', ''))
-            if numbers:
-                return int("".join(numbers))
+        return _extract_price_from_soup(soup, selector)
     except Exception as e:
         print(f"[BS4] Lỗi trích xuất {url}: {e}")
     return None
@@ -108,9 +157,9 @@ def _verify_price_from_soup(soup, price: int):
     formatted_price_comma = f"{price:,}"
 
     patterns_to_check = {
-        "dot_separator": r'\b' + re.escape(formatted_price_dot) + r'\b',
-        "comma_separator": r'\b' + re.escape(formatted_price_comma) + r'\b',
-        "no_separator": r'\b' + re.escape(price_str) + r'\b'
+        "dot_separator": r'(?<!\d)' + re.escape(formatted_price_dot) + r'(?!\d)',
+        "comma_separator": r'(?<!\d)' + re.escape(formatted_price_comma) + r'(?!\d)',
+        "no_separator": r'(?<!\d)' + re.escape(price_str) + r'(?!\d)'
     }
 
     counts = {}
@@ -127,22 +176,86 @@ def _verify_price_from_soup(soup, price: int):
 
 # ========== API ==========
 
+def get_configured_csv_path(config_path):
+    with config_path.open(encoding="utf-8") as config_file:
+        config = json.load(config_file)
+
+    configured_path = config.get("path")
+    if not isinstance(configured_path, str) or not configured_path.strip():
+        raise ValueError(f"{config_path.name} must contain a non-empty 'path'")
+
+    data_path = Path(configured_path).expanduser()
+    if not data_path.is_absolute():
+        data_path = PROJECT_ROOT / data_path
+    data_path = data_path.resolve()
+
+    if data_path.suffix.lower() != ".csv":
+        raise ValueError("The configured default data file must be a CSV")
+    if not data_path.is_file():
+        raise FileNotFoundError(f"Configured default data file does not exist: {data_path}")
+
+    return data_path, configured_path
+
+
+def get_default_data_path():
+    return get_configured_csv_path(DEFAULT_DATA_CONFIG)
+
+
+def get_verification_config():
+    with VERIFICATION_CONFIG.open(encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+def get_accepted_data_path(config, acceptance):
+    key = {
+        "unique": "unique_match_path",
+        "present": "price_present_path",
+    }.get(acceptance)
+    if not key:
+        raise ValueError("Acceptance must be 'unique' or 'present'.")
+    accepted_path = Path(config[key]).expanduser()
+    if not accepted_path.is_absolute():
+        accepted_path = PROJECT_ROOT / accepted_path
+    accepted_path = accepted_path.resolve()
+    if not accepted_path.is_file():
+        raise FileNotFoundError(f"Accepted data file does not exist: {accepted_path}")
+    return accepted_path
+
+
+def has_recorded_accumulation_approval(config, acceptance):
+    decision = config.get("post_report_decision")
+    return (
+        config.get("user_decision_required") is False
+        and isinstance(decision, dict)
+        and decision.get("acceptance") == acceptance
+    )
+
 @app.route('/api/check-price', methods=['POST'])
 def handle_check_price():
     data = request.get_json()
     url = data.get('url')
     selector = data.get('selector')
-    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định selenium
+    request_id = data.get('request_id')
+    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định cloak
 
-    if not url or not selector:
+    if not url or (not selector and not (mode != 'bs4' and is_shopee_url(url))):
         return jsonify({"error": "Thiếu URL hoặc bộ chọn"}), 400
 
     print(f"[Check Price] URL: {url}, Selector: {selector}, Mode: {mode}")
 
+    if mode != 'bs4' and is_shopee_url(url):
+        result = extract_price_shopee(url, selector, request_id=request_id)
+        response = result.to_response()
+        response.update(_manual_action_response(result.status, request_id))
+        if result.price is not None:
+            return jsonify(response), shopee_http_status_for(result, "extract")
+        response["error"] = response.get("error") or f"Shopee extraction status: {result.status}"
+        return jsonify(response), shopee_http_status_for(result, "extract")
+
     if mode == 'bs4':
         price = extract_price_bs4(url, selector)
     else:
-        price = extract_price_selenium(url, selector)
+        price = extract_price_cloak(url, selector)
 
     if price is not None:
         return jsonify({"price": price})
@@ -153,22 +266,100 @@ def handle_verify_price():
     data = request.get_json()
     url = data.get('url')
     price = data.get('price')
-    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định selenium
+    request_id = data.get('request_id')
+    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định cloak
 
     if not url or price is None:
         return jsonify({"error": "Thiếu URL hoặc giá để xác minh"}), 400
 
+    try:
+        price = int(str(price).replace(".", "").replace(",", ""))
+    except ValueError:
+        return jsonify({"error": "Gia khong hop le"}), 400
+
     print(f"[Verify Price] URL: {url}, Price: {price}, Mode: {mode}")
+
+    if mode != 'bs4' and is_shopee_url(url):
+        result = verify_price_shopee(url, price, request_id=request_id)
+        response = result.to_response()
+        response.update({
+            "found_uniquely": result.passed,
+            "match_count": result.match_count,
+        })
+        response.update(_manual_action_response(result.status, request_id))
+        if result.status not in {"ok", "price_changed"}:
+            response["error"] = response.get("error") or f"Shopee verification status: {result.status}"
+        return jsonify(response), shopee_http_status_for(result, "verify")
 
     if mode == 'bs4':
         result = verify_price_bs4(url, price)
     else:
-        result = verify_price_selenium(url, price)
+        result = verify_price_cloak(url, price)
 
     return jsonify({
         "found_uniquely": result["passed"],
         "match_count": result["min_count"]
     })
+
+
+def _manual_action_response(status, request_id):
+    manual_action_required = status in {"session_expired", "captcha_required", "access_blocked"}
+    manual_action = get_manual_action(request_id) if request_id else None
+    public_action = _public_manual_action(manual_action) if manual_action else {}
+    return {
+        "request_id": request_id,
+        "manual_action_required": manual_action_required,
+        "manual_action_state": public_action.get("state"),
+        "manual_action_kind": manual_action.get("action_kind") if manual_action else None,
+        "manual_action_open_url": public_action.get("open_url"),
+        "retryable": manual_action_required,
+        "manual_action_status_url": f"/api/manual-actions/{request_id}" if request_id else None,
+    }
+
+
+def _public_manual_action(action):
+    public_action = dict(action)
+    interaction_url = public_action.pop("interaction_url", None)
+    public_action["open_url"] = (
+        f"/api/manual-actions/{action['request_id']}/open"
+        if interaction_url and action.get("state") == "pending"
+        else None
+    )
+    return public_action
+
+
+@app.route('/api/manual-actions/<request_id>', methods=['GET'])
+def handle_get_manual_action(request_id):
+    action = get_manual_action(request_id)
+    if action is None:
+        return jsonify({"request_id": request_id, "state": "not_found"}), 404
+    return jsonify(_public_manual_action(action))
+
+
+@app.route('/api/manual-actions/<request_id>/open', methods=['GET'])
+def handle_open_manual_action(request_id):
+    action = get_manual_action(request_id)
+    interaction_url = action.get("interaction_url") if action else None
+    if not action or action.get("state") != "pending" or not interaction_url:
+        return jsonify({"request_id": request_id, "state": "not_available"}), 404
+    parsed = urlparse(interaction_url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not (host == "shopee.vn" or host.endswith(".shopee.vn")):
+        return jsonify({"request_id": request_id, "state": "invalid_destination"}), 400
+    record_verification_url_opened(request_id)
+    return redirect(interaction_url, code=302)
+
+
+@app.route('/api/manual-actions/<request_id>/events', methods=['POST'])
+def handle_manual_action_event(request_id):
+    data = request.get_json(silent=True) or {}
+    try:
+        action = record_client_event(request_id, data.get("event", ""))
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    if action is None:
+        return jsonify({"request_id": request_id, "state": "not_found"}), 404
+    return jsonify(_public_manual_action(action))
 
 @app.route('/')
 def serve_index():
@@ -181,6 +372,148 @@ def serve_static(path):
 @app.route('/api/default-mode', methods=['GET'])
 def get_default_mode():
     return jsonify({"default_mode": DEFAULT_MODE})
+
+
+@app.route('/api/agent/default-data', methods=['GET'])
+def get_agent_default_data():
+    if request.headers.get("X-Agent-Automation") != "1":
+        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+
+    try:
+        data_path, configured_path = get_default_data_path()
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    response = send_file(
+        data_path,
+        mimetype="text/csv",
+        as_attachment=False,
+        download_name=data_path.name,
+    )
+    response.headers["X-Default-Data-Name"] = data_path.name
+    response.headers["X-Default-Data-Path"] = configured_path
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route('/api/agent/candidate-data', methods=['GET'])
+def get_agent_candidate_data():
+    if request.headers.get("X-Agent-Automation") != "1":
+        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+
+    try:
+        data_path, configured_path = get_configured_csv_path(CANDIDATE_DATA_CONFIG)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    response = send_file(
+        data_path,
+        mimetype="text/csv",
+        as_attachment=False,
+        download_name=data_path.name,
+    )
+    response.headers["X-Candidate-Data-Name"] = data_path.name
+    response.headers["X-Candidate-Data-Path"] = configured_path
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@app.route('/api/agent/verification-summary', methods=['GET'])
+def get_agent_verification_summary():
+    if request.headers.get("X-Agent-Automation") != "1":
+        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+
+    try:
+        config = json.loads(VERIFICATION_CONFIG.read_text(encoding="utf-8"))
+        report_path = Path(config["report_path"])
+        if not report_path.is_absolute():
+            report_path = PROJECT_ROOT / report_path
+        with report_path.resolve().open(encoding="utf-8-sig", newline="") as handle:
+            reader = csv.DictReader(handle)
+            rows = list(reader)
+            fields = reader.fieldnames or []
+    except (OSError, KeyError, ValueError, json.JSONDecodeError) as exc:
+        return jsonify({"error": str(exc)}), 500
+
+    if len(fields) < 8:
+        return jsonify({"error": "Verification report schema is invalid."}), 500
+
+    product_key = fields[1]
+    link_key = fields[2]
+    match_count_key = fields[5]
+    problem_rows = [
+        {
+            "id": row.get("ID"),
+            "product": row.get(product_key),
+            "url": row.get(link_key),
+            "match_count": int(row.get(match_count_key) or 0),
+            "kind": "ambiguous" if int(row.get(match_count_key) or 0) > 1 else "price_absent",
+        }
+        for row in rows
+        if int(row.get(match_count_key) or 0) != 1
+    ]
+    return jsonify({
+        "run_id": config.get("run_id"),
+        "novel_candidates": config.get("novel_candidates", len(rows)),
+        "unique_matches": config.get("unique_matches", 0),
+        "ambiguous_price_present": config.get("ambiguous_price_present", 0),
+        "price_absent": config.get("price_absent", 0),
+        "user_decision_required": config.get("user_decision_required", True),
+        "problem_rows": problem_rows,
+    })
+
+
+@app.route('/api/agent/accumulation', methods=['POST'])
+def post_agent_accumulation():
+    if request.headers.get("X-Agent-Automation") != "1":
+        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+
+    payload = request.get_json(silent=True) or {}
+    acceptance = payload.get("acceptance", "unique")
+    commit = payload.get("commit") is True
+    try:
+        config = get_verification_config()
+        run_id = config["run_id"]
+        if payload.get("run_id") != run_id:
+            return jsonify({"error": "Run ID confirmation does not match the current verification run."}), 409
+        default_path, _ = get_default_data_path()
+        accepted_path = get_accepted_data_path(config, acceptance)
+        events_path = PROJECT_ROOT / "data_out" / f"{run_id}_events.jsonl"
+        if commit:
+            if not has_recorded_accumulation_approval(config, acceptance):
+                return jsonify({
+                    "error": (
+                        "No matching post-report user approval is recorded for this accumulation."
+                    )
+                }), 409
+            result = commit_accumulation(
+                default_path,
+                accepted_path,
+                run_id=run_id,
+                acceptance=acceptance,
+                events_path=events_path,
+            )
+            config.update({
+                "accepted_standard": acceptance,
+                "accumulation_status": "accumulated",
+                "accumulation_result": result,
+                "user_decision_required": False,
+            })
+            VERIFICATION_CONFIG.write_text(
+                json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            return jsonify({"status": "accumulated", **result})
+
+        plan = build_accumulation_plan(default_path, accepted_path)
+        return jsonify({
+            "status": "preview",
+            "run_id": run_id,
+            "acceptance": acceptance,
+            **{key: value for key, value in plan.items() if key not in {"fieldnames", "rows"}},
+        })
+    except (OSError, KeyError, ValueError, json.JSONDecodeError) as exc:
+        return jsonify({"error": str(exc)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))

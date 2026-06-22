@@ -1,0 +1,43 @@
+# Diagnostics: browser profiles, cookies, downloaded browser binaries, caches,
+# screenshots, and logs. NEVER relax this rule — it protects live login/session
+# cookies under diagnostics/profiles/.
+/diagnostics
+
+# Python / runtime cache
+__pycache__/
+*/__pycache__/
+*.py[cod]
+*.pyo
+
+# Local agent / app runtime and machine-specific settings
+.agents/
+.codex-runtime/
+.claude/
+.codex/skills/write-effective-verbal-context/
+
+# Generated run outputs (created per run, not source)
+/data_out/
+sample_data.*.bak.csv
+
+# Generated pipeline artifacts (regenerate via pipeline/build_exemplar.py)
+/pipeline/exemplar.csv
+/pipeline/exemplar_manifest.json
+
+# Ad-hoc imported/generated research exports
+/gem_rash/
+
+# Mutable run pointers; keep only the portable default-data pointer in Git
+/config/current-candidate.json
+/config/current-verification.json
+
+# Owner-maintained local session handoff and raw audit reports (kept local,
+# not published). Public clones start from STARTER-CONTEXT.md instead.
+/effective-verbal-context.md
+/notebooklm-pipeline-handoff.md
+/audits/
+
+# Temporary staging scratch
+/skill_staging/
+
+# Internal release-preparation planning (not part of the public package)
+/github-commit-preparation/

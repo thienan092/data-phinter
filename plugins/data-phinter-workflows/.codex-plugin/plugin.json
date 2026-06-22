@@ -1,0 +1,29 @@
+{
+  "name": "data-phinter-workflows",
+  "version": "1.0.0",
+  "description": "Recover context and generate, audit, verify, repair, and accumulate Data Phin-ter SST data.",
+  "author": {
+    "name": "thienan092",
+    "url": "https://github.com/thienan092"
+  },
+  "homepage": "https://github.com/thienan092/data-phinter",
+  "repository": "https://github.com/thienan092/data-phinter",
+  "license": "Apache-2.0",
+  "keywords": ["data-phinter", "notebooklm", "sst", "data-verification", "workflow"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Data Phin-ter Workflows",
+    "shortDescription": "Run Data Phin-ter generation and verified intake workflows.",
+    "longDescription": "Provides project-context recovery, NotebookLM candidate generation, app-owned SST audit and accumulation, and Shopee recovery. Handoff writing remains owner-maintained outside the plugin.",
+    "developerName": "thienan092",
+    "category": "Productivity",
+    "capabilities": ["Workflow automation", "Data verification", "Project continuity"],
+    "websiteURL": "https://github.com/thienan092/data-phinter",
+    "brandColor": "#15803D",
+    "defaultPrompt": [
+      "Load the Data Phin-ter project context and continue.",
+      "Run a new NotebookLM SST candidate-data cycle.",
+      "Audit the selected SST candidate status and proceed only if it is eligible."
+    ]
+  }
+}

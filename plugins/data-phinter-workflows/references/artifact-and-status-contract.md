@@ -1,0 +1,61 @@
+# Artifact And Status Contract
+
+## Canonical Pointers
+
+| Pointer | Meaning |
+|---|---|
+| `config/default-data.json` | Current cumulative default CSV used by app-owned workflows |
+| `config/current-candidate.json` | Selected candidate artifact plus completion metadata |
+| `config/current-verification.json` | Latest verification decisions, repair artifacts, and terminal state |
+
+Do not infer completion from a path or filename. Read status fields and verify source artifacts.
+Plugin prompts that mention a selected/current candidate mean "audit its status first", not
+"assume it is eligible for intake."
+
+## Candidate Completion
+
+`strict_completed` requires at least 100 complete, internally unique, topic-valid, direct product
+URLs after listing-like exclusions. A historical `accepted_with_known_risk` pointer remains usable as
+provenance but is not strict completion.
+
+## Acceptance Standards
+
+| Standard | Meaning |
+|---|---|
+| `unique` | Claimed price matches exactly once in accepted page evidence |
+| `present` | Claimed price appears at least once; multi-match ambiguity must be reported |
+
+The agent never silently chooses between them.
+
+An accumulation preview is non-mutating. Commit additionally requires the current verification state
+to record a matching post-report user decision; agent mode or an automation header alone is not
+sufficient approval.
+
+## Legacy Provenance
+
+Historical artifacts are not rewritten to imply evidence they did not record. If an old event
+timeline does not durably prove that approval preceded mutation, preserve the original events,
+record a separate reconciliation artifact, and mark the run with a provenance limitation. Current
+code enforcement may close the behavior for future commits, but it does not retroactively strengthen
+the old evidence.
+
+## Terminal States
+
+| State | Meaning |
+|---|---|
+| `accumulated` | Approved set was written through the app-owned path |
+| `completed_without_write` | Workflow completed and the user chose no mutation |
+| `deferred` | User postponed the decision or required work |
+| `accumulated_with_deferred_rows` | Approved set was written while rejected/problem rows remain explicit |
+
+## Run Evidence
+
+Use actual local timestamps and stable run IDs for candidate, audit, verification, repair, report,
+event, and backup artifacts. Never overwrite earlier run evidence. Event logs contain workflow events,
+counts, decisions, and artifact paths, not secrets, cookies, full HTML, or redundant row payloads.
+
+## Extraction Recipes
+
+The `HTML` field may contain a CSS text selector, `selector::content`, or
+`jsonld:Product.offers.price`. Listing/article/wrong URLs are replaced or rejected instead of being
+masked by a broad selector.

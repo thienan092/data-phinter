@@ -186,6 +186,19 @@
             height: 100%;
             transition: width 0.5s ease-in-out;
         }
+        #manual-action-panel {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            width: min(420px, calc(100vw - 2rem));
+            border-left: 4px solid #dc2626;
+            background: #ffffff;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+            z-index: 2200;
+        }
+        #manual-action-panel.hidden {
+            display: none;
+        }
         /* Modal styles */
         .modal-overlay {
             position: fixed;
@@ -198,6 +211,9 @@
             align-items: center;
             justify-content: center;
             z-index: 2000;
+        }
+        .modal-overlay.hidden {
+            display: none;
         }
         .modal-content {
             background-color: white;
@@ -277,6 +293,19 @@
                     </svg>
                     Thêm dữ liệu
                 </button>
+                <button id="agent-load-default-btn" class="hidden bg-gray-800 hover:bg-gray-900 disabled:bg-gray-500 text-white font-bold py-2 px-3 rounded shadow-md transition duration-300 w-full md:w-auto" data-lang-key-title="agent_load_default_title">
+                    <span class="inline-block border border-gray-400 text-[10px] leading-none px-1 py-0.5 mr-2 align-middle">AGENT</span>
+                    <span data-lang-key="agent_load_default_btn">Load default data</span>
+                </button>
+                <button id="agent-load-candidate-btn" class="hidden bg-gray-700 hover:bg-gray-800 disabled:bg-gray-500 text-white font-bold py-2 px-3 rounded shadow-md transition duration-300 w-full md:w-auto" data-lang-key-title="agent_load_candidate_title">
+                    <span class="inline-block border border-gray-400 text-[10px] leading-none px-1 py-0.5 mr-2 align-middle">AGENT</span>
+                    <span data-lang-key="agent_load_candidate_btn">Add candidate data</span>
+                </button>
+                <button id="agent-accumulate-btn" class="hidden bg-emerald-700 hover:bg-emerald-800 disabled:bg-gray-500 text-white font-bold py-2 px-3 rounded shadow-md transition duration-300 w-full md:w-auto" data-lang-key-title="agent_accumulate_title">
+                    <span class="inline-block border border-emerald-300 text-[10px] leading-none px-1 py-0.5 mr-2 align-middle">AGENT</span>
+                    <span data-lang-key="agent_accumulate_btn">Accumulate approved unique</span>
+                </button>
+                <span id="agent-import-status" class="hidden" aria-hidden="true"></span>
                 <button id="to-csv-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 w-full md:w-auto" data-lang-key="export_csv_btn">
                     📤 Tạo file CSV
                 </button>
@@ -383,6 +412,24 @@
     <div id="task-queue-body" class="p-3 space-y-3 overflow-y-auto">
     </div>
 </div>
+
+<section id="manual-action-panel" class="hidden p-4" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+            <h2 id="manual-action-title" class="text-base font-bold text-red-700">Shopee requires verification</h2>
+            <p id="manual-action-message" class="mt-1 text-sm text-gray-800"></p>
+            <p id="manual-action-meta" class="mt-2 text-xs text-gray-500 break-words"></p>
+        </div>
+        <div class="shrink-0 flex items-center gap-2">
+            <button id="open-manual-action-url-btn" type="button" class="hidden px-3 py-2 bg-orange-600 text-white text-sm font-semibold rounded-md hover:bg-orange-700">
+                Open captcha
+            </button>
+            <button id="acknowledge-manual-action-btn" type="button" class="px-3 py-2 bg-gray-800 text-white text-sm font-semibold rounded-md hover:bg-gray-700">
+                Seen
+            </button>
+        </div>
+    </div>
+</section>
 
 <div id="settings-modal" class="modal-overlay hidden">
     <div class="modal-content">
@@ -514,6 +561,18 @@ document.addEventListener('DOMContentLoaded', function () {
             logistics_ops_tab: "Logistics Operations",
             ai_analysis_tab: "AI Analysis",
             add_data_btn: "\<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5 inline-block mr-2\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"\>\<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\" /\>\</svg\>Add Data",
+            agent_load_default_btn: "Load default data",
+            agent_load_default_title: "Agent automation control. Loads the configured default CSV into this session.",
+            agent_load_candidate_btn: "Add candidate data",
+            agent_load_candidate_title: "Agent automation control. Adds the current completed candidate CSV to this session.",
+            agent_accumulate_btn: "Accumulate approved unique",
+            agent_accumulate_title: "Agent automation control. Canonicalizes Link duplicates and atomically writes the approved unique set to the configured default CSV.",
+            agent_accumulate_loading: "Accumulating the approved unique set...",
+            agent_accumulate_completed: "Approved unique data accumulated.",
+            agent_import_loading: "Loading configured default data...",
+            agent_candidate_import_loading: "Loading current candidate data...",
+            agent_import_language_switch: "Input language detected; switching the app language automatically...",
+            alert_default_data_load_error: "Could not load the configured default data:",
             export_csv_btn: "📤 Export to CSV",
             add_all_changes_btn: "Add All Changes",
             check_price_updates_btn: "Verify/Update Price",
@@ -620,6 +679,17 @@ document.addEventListener('DOMContentLoaded', function () {
             status_updated: "Live",
             status_outdated: "Old",
             status_not_checked: "Not Checked",
+            status_manual_action: "Waiting for verification",
+            status_environment_blocked: "Environment blocked",
+            manual_action_title: "Shopee needs attention",
+            manual_action_pending: "Complete the verification in the open CloakBrowser window. This check will continue automatically.",
+            manual_action_retry_load_error: "Shopee's verification screen did not finish loading. Automatic Retry is paused to preserve the current challenge.",
+            manual_action_captcha_bootstrap: "Shopee's captcha is still starting. Leave the CloakBrowser window open and do not click Retry yet.",
+            manual_action_login_required: "Log in in the open CloakBrowser window. This check will continue automatically.",
+            manual_action_timed_out: "The verification window expired. Complete verification, then run the price check again.",
+            manual_action_seen: "Seen",
+            manual_action_open_browser: "Open captcha",
+            manual_action_heartbeat: "Shopee verification is still waiting for you.",
             alert_in_progress: "A check is already in progress. Please wait.",
             alert_invalid_csv: "Invalid or empty CSV file.",
             alert_no_valid_data: "No valid data in the file to add.",
@@ -652,6 +722,18 @@ document.addEventListener('DOMContentLoaded', function () {
             logistics_ops_tab: "Vận hành Logistics",
             ai_analysis_tab: "Phân tích AI",
             add_data_btn: "\<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"h-5 w-5 inline-block mr-2\" fill=\"none\" viewBox=\"0 0 24 24\" stroke=\"currentColor\" stroke-width=\"2\"\>\<path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z\" /\>\</svg\>Thêm dữ liệu",
+            agent_load_default_btn: "Nạp dữ liệu mặc định",
+            agent_load_default_title: "Điều khiển tự động hóa dành cho agent. Nạp CSV mặc định đã cấu hình vào phiên hiện tại.",
+            agent_load_candidate_btn: "Thêm tập ứng viên",
+            agent_load_candidate_title: "Điều khiển tự động hóa dành cho agent. Thêm CSV ứng viên hoàn tất hiện tại vào phiên.",
+            agent_accumulate_btn: "Tích lũy tập unique đã duyệt",
+            agent_accumulate_title: "Điều khiển tự động hóa dành cho agent. Chuẩn hóa trùng Link và ghi nguyên tử tập unique đã duyệt vào CSV mặc định đã cấu hình.",
+            agent_accumulate_loading: "Đang tích lũy tập unique đã duyệt...",
+            agent_accumulate_completed: "Đã tích lũy tập unique được duyệt.",
+            agent_import_loading: "Đang nạp dữ liệu mặc định đã cấu hình...",
+            agent_candidate_import_loading: "Đang nạp tập ứng viên hiện tại...",
+            agent_import_language_switch: "Đã nhận diện ngôn ngữ đầu vào; đang tự chuyển ngôn ngữ ứng dụng...",
+            alert_default_data_load_error: "Không thể nạp dữ liệu mặc định đã cấu hình:",
             export_csv_btn: "📤 Tạo file CSV",
             add_all_changes_btn: "Thêm tất cả thay đổi",
             check_price_updates_btn: "Kiểm tra/Cập nhật Giá",
@@ -758,6 +840,17 @@ document.addEventListener('DOMContentLoaded', function () {
             status_updated: "Đã",
             status_outdated: "Cũ",
             status_not_checked: "Chưa KT",
+            status_manual_action: "Chờ xác minh",
+            status_environment_blocked: "Môi trường bị chặn",
+            manual_action_title: "Shopee cần bạn chú ý",
+            manual_action_pending: "Hãy hoàn tất xác minh trong cửa sổ CloakBrowser đang mở. Tác vụ sẽ tự tiếp tục sau đó.",
+            manual_action_retry_load_error: "Màn hình xác minh Shopee chưa tải xong. Tự động Thử Lại đã được tạm dừng để giữ nguyên challenge hiện tại.",
+            manual_action_captcha_bootstrap: "Captcha Shopee đang khởi tạo. Hãy giữ cửa sổ CloakBrowser mở và chưa bấm Thử Lại.",
+            manual_action_login_required: "Hãy đăng nhập trong cửa sổ CloakBrowser đang mở. Tác vụ sẽ tự tiếp tục sau đó.",
+            manual_action_timed_out: "Đã hết thời gian chờ xác minh. Hãy xác minh xong rồi chạy kiểm tra giá lại.",
+            manual_action_seen: "Đã thấy",
+            manual_action_open_browser: "Mở captcha",
+            manual_action_heartbeat: "Shopee vẫn đang chờ bạn xác minh.",
             alert_in_progress: "Một quá trình kiểm tra đang được thực hiện. Vui lòng đợi.",
             alert_invalid_csv: "Tệp CSV không hợp lệ hoặc trống.",
             alert_no_valid_data: "Không có dữ liệu hợp lệ trong tệp để thêm.",
@@ -814,6 +907,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let isEditMode = false; // New state variable for raw mode
     let visibilityState = {};
     let columnSemantics = []; // Explicitly initialize as an empty array globally
+    const manualActionHeartbeatMs = Math.max(
+        60000,
+        Number(localStorage.getItem('manualActionHeartbeatMs')) || 180000
+    );
+    let activeManualAction = null;
+    let manualActionHeartbeatTimer = null;
+    let notificationAudioContext = null;
 
     const getFormattedDate = () => {
         const today = new Date();
@@ -1595,6 +1695,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (translations[currentLang].status_outdated === status) {
             return translations["vn"].status_outdated;
         }
+        if ([translations.en.status_manual_action, translations.vn.status_manual_action].includes(status)) {
+            return translations["vn"].status_manual_action;
+        }
+        if ([translations.en.status_environment_blocked, translations.vn.status_environment_blocked].includes(status)) {
+            return translations["vn"].status_environment_blocked;
+        }
         return translations["vn"].status_updated;
     };
 
@@ -2094,6 +2200,195 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         }
     };
 
+    const createManualActionRequestId = (task, phase) => {
+        const safeTaskId = String(task.id || 'row').replace(/[^a-zA-Z0-9_-]/g, '-');
+        return `${safeTaskId}-${phase}-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    };
+
+    const postManualActionEvent = async (requestId, event) => {
+        try {
+            await fetch(`/api/manual-actions/${encodeURIComponent(requestId)}/events`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ event })
+            });
+        } catch (error) {
+            console.warn('Could not write manual-action audit event:', error.message);
+        }
+    };
+
+    const prepareManualActionAlerts = async () => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            try {
+                await Notification.requestPermission();
+            } catch (error) {
+                console.warn('Browser notifications are unavailable:', error.message);
+            }
+        }
+
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass && !notificationAudioContext) {
+            notificationAudioContext = new AudioContextClass();
+        }
+        if (notificationAudioContext?.state === 'suspended') {
+            await notificationAudioContext.resume();
+        }
+    };
+
+    const playManualActionTone = () => {
+        if (!notificationAudioContext) return;
+        const oscillator = notificationAudioContext.createOscillator();
+        const gain = notificationAudioContext.createGain();
+        oscillator.frequency.value = 880;
+        gain.gain.setValueAtTime(0.08, notificationAudioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, notificationAudioContext.currentTime + 0.35);
+        oscillator.connect(gain);
+        gain.connect(notificationAudioContext.destination);
+        oscillator.start();
+        oscillator.stop(notificationAudioContext.currentTime + 0.35);
+    };
+
+    const emitManualActionNotification = (action, heartbeat = false) => {
+        const title = translations[currentLang].manual_action_title;
+        const body = heartbeat
+            ? translations[currentLang].manual_action_heartbeat
+            : manualActionMessage(action);
+
+        playManualActionTone();
+        if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(title, {
+                body,
+                tag: `shopee-manual-action-${action.request_id}`,
+                renotify: true,
+                requireInteraction: true
+            });
+        }
+        postManualActionEvent(action.request_id, heartbeat ? 'heartbeat' : 'notification_shown');
+    };
+
+    const clearManualActionHeartbeat = () => {
+        if (manualActionHeartbeatTimer) {
+            clearInterval(manualActionHeartbeatTimer);
+            manualActionHeartbeatTimer = null;
+        }
+    };
+
+    const manualActionMessage = (action) => {
+        if (action.state === 'timed_out') {
+            return translations[currentLang].manual_action_timed_out;
+        }
+        if (action.action_kind === 'retry_load_error') {
+            return translations[currentLang].manual_action_retry_load_error;
+        }
+        if (action.action_kind === 'captcha_bootstrap') {
+            return translations[currentLang].manual_action_captcha_bootstrap;
+        }
+        if (action.action_kind === 'login_required') {
+            return translations[currentLang].manual_action_login_required;
+        }
+        return translations[currentLang].manual_action_pending;
+    };
+
+    const renderManualAction = (action, task) => {
+        const panel = document.getElementById('manual-action-panel');
+        const isFinished = ['resolved', 'failed'].includes(action.state);
+        if (isFinished) {
+            if (activeManualAction?.request_id === action.request_id) {
+                clearManualActionHeartbeat();
+                activeManualAction = null;
+                panel.classList.add('hidden');
+            }
+            return;
+        }
+
+        const isNewAction = activeManualAction?.request_id !== action.request_id;
+        activeManualAction = { ...action, task };
+        document.getElementById('manual-action-title').textContent = translations[currentLang].manual_action_title;
+        document.getElementById('manual-action-message').textContent = manualActionMessage(action);
+        document.getElementById('manual-action-meta').textContent = [
+            task?.id,
+            action.status,
+            action.action_kind,
+            action.final_url,
+            action.artifact_path
+        ].filter(Boolean).join(' | ');
+        const acknowledgeButton = document.getElementById('acknowledge-manual-action-btn');
+        acknowledgeButton.textContent = translations[currentLang].manual_action_seen;
+        const openUrlButton = document.getElementById('open-manual-action-url-btn');
+        openUrlButton.textContent = translations[currentLang].manual_action_open_browser;
+        openUrlButton.classList.toggle('hidden', !action.open_url || action.state !== 'pending');
+        if (isNewAction) {
+            acknowledgeButton.disabled = false;
+            acknowledgeButton.classList.remove('opacity-60', 'cursor-not-allowed');
+        }
+        panel.classList.remove('hidden');
+
+        if (isNewAction) {
+            emitManualActionNotification(action, false);
+        }
+
+        clearManualActionHeartbeat();
+        if (action.state === 'pending') {
+            manualActionHeartbeatTimer = setInterval(() => {
+                if (activeManualAction?.request_id === action.request_id) {
+                    emitManualActionNotification(action, true);
+                }
+            }, manualActionHeartbeatMs);
+        }
+    };
+
+    const monitorManualAction = (requestId, task) => {
+        let stopped = false;
+        const poll = async () => {
+            if (stopped) return;
+            try {
+                const response = await fetch(`/api/manual-actions/${encodeURIComponent(requestId)}`);
+                if (response.ok) {
+                    renderManualAction(await response.json(), task);
+                }
+            } catch (error) {
+                console.warn('Could not poll manual-action state:', error.message);
+            }
+        };
+        const timer = setInterval(poll, 1500);
+        return {
+            poll,
+            stop: () => {
+                stopped = true;
+                clearInterval(timer);
+            }
+        };
+    };
+
+    const markNodeForManualAction = (node, result, task) => {
+        node.data[translations["vn"].col_update_status] = translations["vn"].status_manual_action;
+        node.data.manualAction = {
+            requestId: result.request_id,
+            status: result.status,
+            actionKind: result.manual_action_kind,
+            finalUrl: result.final_url,
+            artifactPath: result.artifact_path
+        };
+        renderManualAction({
+            request_id: result.request_id,
+            state: result.manual_action_state || 'pending',
+            status: result.status,
+            action_kind: result.manual_action_kind,
+            final_url: result.final_url,
+            artifact_path: result.artifact_path,
+            open_url: result.manual_action_open_url || null
+        }, task);
+    };
+
+    const markNodeForEnvironmentBlock = (node, result) => {
+        node.data[translations["vn"].col_update_status] = translations["vn"].status_environment_blocked;
+        node.data.providerFailure = {
+            status: result.status,
+            finalUrl: result.final_url,
+            artifactPath: result.artifact_path
+        };
+    };
+
     const renderTaskQueue = () => {
         const taskQueueBody = document.getElementById('task-queue-body');
         const taskCountSpan = document.getElementById('task-count');
@@ -2182,6 +2477,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         task.controller = new AbortController();
         const signal = task.controller.signal;
 
+        let primaryMonitor = null;
         try {
             let selectorForApi = task.selector;
             if (selectorForApi && selectorForApi.trim().startsWith('<')) {
@@ -2193,17 +2489,26 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 }
             }
 
+            const requestId = createManualActionRequestId(task, 'extract');
+            primaryMonitor = monitorManualAction(requestId, task);
             const response = await fetch('/api/check-price', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: task.url, selector: selectorForApi }),
+                body: JSON.stringify({ url: task.url, selector: selectorForApi, request_id: requestId }),
                 signal
             });
 
             const result = await response.json();
+            await primaryMonitor.poll();
+            primaryMonitor.stop();
+            primaryMonitor = null;
             const node = sstGridOptions.api.getRowNode(task.id);
             if (node) {
-                if (response.ok && result.price !== null) {
+                if (result.manual_action_required) {
+                    markNodeForManualAction(node, result, task);
+                } else if (result.status === 'environment_network_blocked') {
+                    markNodeForEnvironmentBlock(node, result);
+                } else if (response.ok && result.price !== null) {
                     const newPrice = parseNumericValue(result.price);
                     const oldPrice = parseNumericValue(node.data[translations["vn"].col_list_price]);
                     if (newPrice !== null && oldPrice !== null && newPrice !== oldPrice) {
@@ -2219,23 +2524,32 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             }
 
         } catch (error) {
+            primaryMonitor?.stop();
             if (error.name === 'AbortError') {
             } else {
-                console.warn(`2Primary scraping for ${task.id} failed:`, error.message, ". Attempting fallback.");
+                console.warn(`Primary scraping for ${task.id} failed:`, error.message, ". Attempting fallback.");
+                let fallbackMonitor = null;
                 try {
                     const oldPrice = parseNumericValue(task.originalPrice);
                     if (oldPrice === null) throw new Error("No valid original price for fallback.");
 
+                    const fallbackRequestId = createManualActionRequestId(task, 'verify');
+                    fallbackMonitor = monitorManualAction(fallbackRequestId, task);
                     const fallbackResponse = await fetch('/api/verify-price-by-text', {
                          method: 'POST',
                          headers: { 'Content-Type': 'application/json' },
-                         body: JSON.stringify({ url: task.url, price: oldPrice }),
+                         body: JSON.stringify({ url: task.url, price: oldPrice, request_id: fallbackRequestId }),
                          signal
                     });
                     const fallbackResult = await fallbackResponse.json();
+                    await fallbackMonitor.poll();
+                    fallbackMonitor.stop();
+                    fallbackMonitor = null;
                     const node = sstGridOptions.api.getRowNode(task.id);
                     if (node) {
-                        if (fallbackResponse.ok && fallbackResult.found_uniquely) {
+                        if (fallbackResult.manual_action_required) {
+                            markNodeForManualAction(node, fallbackResult, task);
+                        } else if (fallbackResponse.ok && fallbackResult.found_uniquely) {
                             node.data[translations["vn"].col_update_status] = translations[currentLang].status_error;
                             node.data.matchCount = 1;
                         } else {
@@ -2256,9 +2570,12 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                             sstGridOptions.api.refreshCells({ rowNodes: [node], columns: [translations["vn"].col_update_status], force: true });
                         }
                     }
+                } finally {
+                    fallbackMonitor?.stop();
                 }
             }
         } finally {
+            primaryMonitor?.stop();
             clearInterval(interval);
             if (taskElement) {
                 progressBarFill.style.width = '100%';
@@ -2325,6 +2642,12 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     };
 
     const statusCellRenderer = (params) => {
+        if (getOriginalLangUpdateStatus(params.value) === translations["vn"].status_manual_action) {
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">${translations[currentLang].status_manual_action}</span>`;
+        }
+        if (getOriginalLangUpdateStatus(params.value) === translations["vn"].status_environment_blocked) {
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-800">${translations[currentLang].status_environment_blocked}</span>`;
+        }
         if (getOriginalLangUpdateStatus(params.value) === "Mới") {
             const btn = document.createElement('button');
             btn.innerHTML = `${translations[currentLang].status_new} (${translations[currentLang].status_add_btn})`;
@@ -2519,6 +2842,39 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         },
     });
 
+    const maybeLoadLocalUiFixture = () => {
+        const isLoopback = ['127.0.0.1', 'localhost', '::1'].includes(window.location.hostname);
+        const searchParams = new URLSearchParams(window.location.search);
+        const fixtureName = searchParams.get('ui_test_fixture') || searchParams.get('ui-test-fixture');
+        if (!isLoopback || fixtureName !== 'shopee') return;
+
+        const productUrl = 'https://shopee.vn/C%C3%A1-ng%E1%BB%AB-ng%C3%A2m-d%E1%BA%A7u-SEASPIMEX-185gr-i.328369609.7564602858?extraParams=%7B%22display_model_id%22%3A61937603406%2C%22model_selection_logic%22%3A3%7D&sp_atk=78f25107-7c71-4650-b9b5-e46b0e96a954&xptdk=78f25107-7c71-4650-b9b5-e46b0e96a954';
+        const makeRow = (id, name, price) => ({
+            ID: id,
+            [translations.vn.col_product]: name,
+            [translations.vn.col_brand]: 'SEASPIMEX',
+            [translations.vn.col_source]: 'Shopee',
+            [translations.vn.col_link]: productUrl,
+            [translations.vn.col_coffee_type]: '',
+            [translations.vn.col_unit]: '185gr',
+            [translations.vn.col_list_price]: price,
+            [translations.vn.col_shipping_fee]: 0,
+            [translations.vn.col_freeship_threshold]: 0,
+            [translations.vn.col_location]: 'Vietnam',
+            [translations.vn.col_html_selector]: '',
+            [translations.vn.col_date_added]: '2025-06-19',
+            [translations.vn.col_update_status]: translations.vn.status_updated,
+            [translations.vn.col_ecommerce_platform]: 'Shopee'
+        });
+
+        sst_data = [
+            makeRow('ui-shopee-ok', 'SEASPIMEX tuna 185gr', 27199),
+            makeRow('ui-shopee-new', 'SEASPIMEX tuna wrong-price', 999999)
+        ];
+        sstGridOptions.api.setRowData([...sst_data]);
+    };
+    maybeLoadLocalUiFixture();
+
     const chatInput = document.getElementById('chat-input');
     const chatSubmit = document.getElementById('chat-submit');
     const promptButtons = document.querySelectorAll('.prompt-btn');
@@ -2553,12 +2909,36 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         });
     });
     
+    document.getElementById('acknowledge-manual-action-btn').addEventListener('click', (event) => {
+        if (!activeManualAction) return;
+        postManualActionEvent(activeManualAction.request_id, 'acknowledged');
+        event.currentTarget.disabled = true;
+        event.currentTarget.classList.add('opacity-60', 'cursor-not-allowed');
+    });
+
+    document.getElementById('open-manual-action-url-btn').addEventListener('click', () => {
+        const openUrl = activeManualAction?.open_url;
+        if (!openUrl) return;
+        try {
+            const parsed = new URL(openUrl, window.location.origin);
+            if (parsed.origin === window.location.origin) {
+                window.open(parsed.href, '_blank', 'noopener,noreferrer');
+            }
+        } catch (error) {
+            console.warn('Could not open Shopee verification URL:', error.message);
+        }
+    });
+
     document.getElementById('check-price-btn').addEventListener('click', () => {
         if (taskQueue.length > 0) {
             alert(translations[currentLang].alert_in_progress);
             return;
         }
+        prepareManualActionAlerts();
         sstGridOptions.api.forEachNodeAfterFilterAndSort(node => {
+            if (agentMode && node.data._intakeSource !== 'candidate') {
+                return;
+            }
             if (node.data[translations["vn"].col_update_status] !== translations[currentLang].status_outdated){
                 taskQueue.push({
                     id: node.data.ID,
@@ -2599,10 +2979,133 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     });
 
     const addDataBtn = document.getElementById('add-data-btn');
+    const agentLoadDefaultBtn = document.getElementById('agent-load-default-btn');
+    const agentLoadCandidateBtn = document.getElementById('agent-load-candidate-btn');
+    const agentAccumulateBtn = document.getElementById('agent-accumulate-btn');
+    const agentImportStatus = document.getElementById('agent-import-status');
     const csvFileInput = document.getElementById('csv-file-input');
+    const agentMode = new URLSearchParams(window.location.search).get('agent') === '1';
+    let agentImportInProgress = false;
+    let agentImportSource = null;
+
+    const setAgentImportStatus = (message, isError = false, code = 'status') => {
+        agentImportStatus.textContent = message;
+        agentImportStatus.dataset.status = isError ? 'error' : 'info';
+        agentImportStatus.dataset.code = code;
+        console[isError ? 'error' : 'info'](`[agent-import] ${JSON.stringify({ code, message })}`);
+    };
+
+    const finishAgentImport = (message, isError = false, code = isError ? 'failed' : 'completed') => {
+        if (!agentImportInProgress) return false;
+        agentImportInProgress = false;
+        agentImportSource = null;
+        agentLoadDefaultBtn.disabled = false;
+        agentLoadCandidateBtn.disabled = false;
+        agentAccumulateBtn.disabled = false;
+        setAgentImportStatus(message, isError, code);
+        return true;
+    };
 
     addDataBtn.addEventListener('click', () => {
         csvFileInput.click();
+    });
+
+    if (agentMode) {
+        agentLoadDefaultBtn.classList.remove('hidden');
+        agentLoadCandidateBtn.classList.remove('hidden');
+        agentAccumulateBtn.classList.remove('hidden');
+    }
+
+    const loadAgentData = async ({ endpoint, headerName, fallbackName, loadingMessage, failurePrefix, source }) => {
+        agentImportInProgress = true;
+        agentImportSource = source;
+        agentLoadDefaultBtn.disabled = true;
+        agentLoadCandidateBtn.disabled = true;
+        setAgentImportStatus(loadingMessage, false, 'loading');
+        try {
+            const response = await fetch(endpoint, {
+                headers: { 'X-Agent-Automation': '1' },
+                cache: 'no-store'
+            });
+            if (!response.ok) {
+                const details = await response.json().catch(() => ({}));
+                throw new Error(details.error || `HTTP ${response.status}`);
+            }
+
+            const blob = await response.blob();
+            const fileName = response.headers.get(headerName) || fallbackName;
+            const transfer = new DataTransfer();
+            transfer.items.add(new File([blob], fileName, { type: 'text/csv' }));
+            csvFileInput.files = transfer.files;
+            csvFileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (error) {
+            finishAgentImport(`${failurePrefix} ${error.message}`, true, 'load_failed');
+            agentImportSource = null;
+        } finally {
+            if (!agentImportInProgress) {
+                agentLoadDefaultBtn.disabled = false;
+                agentLoadCandidateBtn.disabled = false;
+            }
+        }
+    };
+
+    agentLoadDefaultBtn.addEventListener('click', async () => {
+        await loadAgentData({
+            endpoint: '/api/agent/default-data',
+            headerName: 'X-Default-Data-Name',
+            fallbackName: 'default-data.csv',
+            loadingMessage: translations[currentLang].agent_import_loading,
+            failurePrefix: translations[currentLang].alert_default_data_load_error,
+            source: 'default'
+        });
+    });
+
+    agentLoadCandidateBtn.addEventListener('click', async () => {
+        await loadAgentData({
+            endpoint: '/api/agent/candidate-data',
+            headerName: 'X-Candidate-Data-Name',
+            fallbackName: 'candidate-data.csv',
+            loadingMessage: translations[currentLang].agent_candidate_import_loading,
+            failurePrefix: translations[currentLang].alert_default_data_load_error,
+            source: 'candidate'
+        });
+    });
+
+    agentAccumulateBtn.addEventListener('click', async () => {
+        agentAccumulateBtn.disabled = true;
+        setAgentImportStatus(translations[currentLang].agent_accumulate_loading, false, 'accumulation_started');
+        try {
+            const summary = await fetch('/api/agent/verification-summary', {
+                headers: { 'X-Agent-Automation': '1' },
+                cache: 'no-store'
+            }).then(response => {
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return response.json();
+            });
+            const response = await fetch('/api/agent/accumulation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Agent-Automation': '1'
+                },
+                body: JSON.stringify({
+                    run_id: summary.run_id,
+                    acceptance: 'unique',
+                    commit: true
+                })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+            setAgentImportStatus(
+                `${translations[currentLang].agent_accumulate_completed} ${result.rows_after} rows.`,
+                false,
+                'accumulation_completed'
+            );
+        } catch (error) {
+            setAgentImportStatus(error.message, true, 'accumulation_failed');
+        } finally {
+            agentAccumulateBtn.disabled = false;
+        }
     });
 
     const detectLanguage = (header) => {
@@ -2630,7 +3133,11 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         });
 
         if (!is_col_exist) {
-            alert(translations[currentLang].alert_lang_detect);
+            if (agentImportInProgress) {
+                setAgentImportStatus(translations[currentLang].agent_import_language_switch, false, 'language_switched');
+            } else {
+                alert(translations[currentLang].alert_lang_detect);
+            }
             currentLang = (currentLang === "vn") ? "en" : "vn";
 
             languageSwitcher.value = currentLang;
@@ -2800,6 +3307,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     csvFileInput.addEventListener('change', async (event) => {
         const files = event.target.files;
         if (files.length === 0) return;
+        const importSource = agentImportSource;
 
         let csvFile = null;
         let jsonFile = null;
@@ -2838,7 +3346,9 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 const text = e.target.result;
                 const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
                 if (lines.length < 2) {
-                    alert(translations[currentLang].alert_invalid_csv);
+                    if (!finishAgentImport(translations[currentLang].alert_invalid_csv, true, 'invalid_csv')) {
+                        alert(translations[currentLang].alert_invalid_csv);
+                    }
                     csvFileInput.value = '';
                     return;
                 }
@@ -2914,7 +3424,10 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                         console.log("Header mapping from Gemini:", headerMap);
                     } catch (error) {
                         console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
-                        alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                        const message = `${translations[currentLang].alert_header_standardization_error} ${error.message}`;
+                        if (!finishAgentImport(message, true, 'header_standardization_failed')) {
+                            alert(message);
+                        }
                         return;
                     }
 
@@ -2983,7 +3496,9 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 }
                 
                 if (newSstEntries.length === 0) {
-                    alert(translations[currentLang].alert_no_valid_data);
+                    if (!finishAgentImport(translations[currentLang].alert_no_valid_data, true, 'no_valid_rows')) {
+                        alert(translations[currentLang].alert_no_valid_data);
+                    }
                     csvFileInput.value = '';
                     return;
                 }
@@ -2992,11 +3507,19 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                 try {
                     console.log("processCategoricalData");
                     const processedNewSstEntries = await processCategoricalData(newSstEntries, columnSemantics); 
+                    if (importSource) {
+                        processedNewSstEntries.forEach(entry => {
+                            entry._intakeSource = importSource;
+                        });
+                    }
                 
                     sst_data.push(...processedNewSstEntries);
                 } catch (error) {
                     console.error("Lỗi khi chuẩn hóa tiêu đề CSV bằng Gemini:", error);
-                    alert(`${translations[currentLang].alert_header_standardization_error} ${error.message}`);
+                    const message = `${translations[currentLang].alert_header_standardization_error} ${error.message}`;
+                    if (!finishAgentImport(message, true, 'processing_failed')) {
+                        alert(message);
+                    }
                     return;
                 }
                 
@@ -3026,7 +3549,13 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
                     applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
                 }
 
-                alert(`${newSstEntries.length} ${translations[currentLang].alert_rows_added}`);
+                const successMessage = `${newSstEntries.length} ${translations[currentLang].alert_rows_added}`;
+                if (!finishAgentImport(successMessage, false, 'completed')) {
+                    alert(successMessage);
+                }
+                if (importSource) {
+                    agentImportSource = null;
+                }
             };
             reader.readAsText(csvFile, 'UTF-8');
             event.target.value = '';
@@ -3344,6 +3873,9 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         const fromDate = picker.getStartDate();
         const toDate = picker.getEndDate();
         applyAllFilters(fromDate.dateInstance, toDate.dateInstance);
+        if (activeManualAction) {
+            renderManualAction(activeManualAction, activeManualAction.task);
+        }
         // Update charts
         updateChartsFromGridData();
     };

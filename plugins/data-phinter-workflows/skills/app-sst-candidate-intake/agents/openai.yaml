@@ -1,0 +1,4 @@
+interface:
+  display_name: "SST Candidate Intake"
+  short_description: "Audit and intake candidate SST data safely"
+  default_prompt: "Use $app-sst-candidate-intake to audit the selected candidate and proceed only through eligible, approved app-intake gates."
