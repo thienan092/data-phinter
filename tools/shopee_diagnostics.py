@@ -15,6 +15,10 @@ from typing import Any
 import cloakbrowser
 from cloakbrowser import launch
 from cloakbrowser.browser import launch_persistent_context
+from tools.shopee_failure_taxonomy import (
+    TAXONOMY_VERSION,
+    classify_artifact as classify_artifact_shared,
+)
 
 
 DEFAULT_CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
@@ -363,129 +367,7 @@ def attach_network_logger(page: Any, path: Path, control: dict[str, Any]) -> Non
 
 
 def classify_artifact(artifact: dict[str, Any]) -> tuple[str, list[str]]:
-    error = (artifact.get("error") or "").lower()
-    final_url = (artifact.get("final_url") or "").lower()
-    title = (artifact.get("title") or "").lower()
-    body_excerpt = (artifact.get("body_excerpt") or "").lower()
-    combined = " ".join([final_url, title, body_excerpt, error])
-
-    environment_block_markers = [
-        "winerror 10013",
-        "forbidden by its access permissions",
-        "getaddrinfo failed",
-        "connecterror",
-        "primary download failed",
-    ]
-    if any(marker in combined for marker in environment_block_markers):
-        return (
-            "environment_network_blocked",
-            [
-                "The probe did not reach Shopee; the local environment blocked network or binary download.",
-                "Keep this separate from Shopee captcha, selector, and access-block classifications.",
-                "If the user wants a true CloakBrowser binary test, run with approved network/cache access or preinstall the patched binary.",
-            ],
-        )
-
-    if "/verify/captcha" in combined or "captcha" in combined:
-        return (
-            "captcha_required",
-            [
-                "Treat this as a captcha/anti-bot challenge, not selector failure.",
-                "Retry with persistent headful manual session seeding if the user can solve the challenge.",
-                "If manual seeding still lands on captcha/load-error, prefer direct product URL probe before adding proxy.",
-                "Only consider residential proxy after profile/session and direct-product strategies fail with the same marker.",
-            ],
-        )
-
-    blocked_markers = [
-        "page unavailable",
-        "traffic",
-        "robot",
-        "unusual",
-        "verify",
-    ]
-    login_markers = ["log in", "login", "dang nhap", "sign in"]
-
-    if error and "timeout" in error:
-        return (
-            "navigation_timeout",
-            [
-                "Increase navigation timeout and wait only for domcontentloaded/commit first.",
-                "Capture partial page evidence before retrying a different strategy.",
-                "Try persistent profile before adding proxy, because timeout may come from challenge scripts.",
-            ],
-        )
-
-    if "/verify/traffic" in final_url or "/verify/error" in final_url:
-        return (
-            "access_blocked_or_session_required",
-            [
-                "Retry with launch_persistent_context and headless=False so a human can solve login/traffic verification once.",
-                "Reuse the same profile directory on later runs to preserve Shopee cookies and localStorage.",
-                "Prefer direct product URLs over search pages for the next probe.",
-                "If persistent headful still returns the same block marker, add residential proxy as a later strategy.",
-            ],
-        )
-
-    if (
-        artifact.get("body_text_len", 0) < 500
-        and artifact.get("product_link_count", 0) == 0
-        and artifact.get("price_candidate_count", 0) == 0
-    ):
-        return (
-            "thin_or_empty_page",
-            [
-                "The page reached Shopee but did not render searchable product content.",
-                "Retry with persistent headful profile, longer settle/scroll, or a direct product URL before changing selectors.",
-                "Keep this separate from captcha, traffic verification, and selector failure.",
-            ],
-        )
-
-    if any(marker in combined for marker in blocked_markers):
-        return (
-            "access_blocked_or_session_required",
-            [
-                "Retry with launch_persistent_context and headless=False so a human can solve login/traffic verification once.",
-                "Reuse the same profile directory on later runs to preserve Shopee cookies and localStorage.",
-                "Prefer direct product URLs over search pages for the next probe.",
-                "If persistent headful still returns the same block marker, add residential proxy as a later strategy.",
-            ],
-        )
-
-    if any(marker in combined for marker in login_markers):
-        return (
-            "login_required",
-            [
-                "Switch to persistent headful profile and complete login once.",
-                "Treat login-required separately from selector failure so the app does not mark the row as product-price missing.",
-            ],
-        )
-
-    if artifact.get("price_candidate_count", 0) > 0:
-        return (
-            "loaded_with_price_candidates",
-            [
-                "Run selector rediscovery against visible price nodes.",
-                "Extract product cards and associate price candidates with product links before changing backend logic.",
-            ],
-        )
-
-    if artifact.get("product_link_count", 0) > 0:
-        return (
-            "loaded_without_price_candidates",
-            [
-                "Run a DOM visibility probe for price nodes after a longer scroll/wait cycle.",
-                "Check whether prices are rendered after lazy loading or hidden in script data.",
-            ],
-        )
-
-    return (
-        "unknown_scrape_failure",
-        [
-            "Inspect screenshot and html excerpt before changing code.",
-            "Add a narrower classifier only after identifying a repeated marker.",
-        ],
-    )
+    return classify_artifact_shared(artifact)
 
 
 def write_report(out_dir: Path, artifact: dict[str, Any]) -> None:
@@ -545,6 +427,7 @@ def run_probe(args: argparse.Namespace) -> Path:
 
     artifact: dict[str, Any] = {
         "schema_version": 1,
+        "classification_taxonomy_version": TAXONOMY_VERSION,
         "provider": "shopee",
         "strategy": args.strategy,
         "binary_mode": binary_mode,

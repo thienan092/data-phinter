@@ -8,8 +8,8 @@ services:
     region: singapore            # Chọn khu vực gần người dùng của bạn nhất (ví dụ: singapore, oregon, frankfurt)
     plan: starter                # Chọn gói dịch vụ (starter, standard, pro)
 
-    # Thêm buildpack để cài đặt Google Chrome
-    # Đây là bước quan trọng để Selenium có thể tìm thấy trình duyệt
+    # Giữ buildpack Chrome cho các tác vụ trình duyệt.
+    # Xác minh khả năng tương thích CloakBrowser/Playwright trước khi triển khai.
     buildpacks:
       - url: https://github.com/heroku/heroku-buildpack-google-chrome
 

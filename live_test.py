@@ -1,3 +1,9 @@
+# =============================================================================
+# LEGACY / REFERENCE ONLY — manual CloakBrowser smoke-test helper.
+# Not part of the supported workflow or the automated test suite. The example
+# URLs below are placeholders; replace them with live product URLs to use it.
+# The supported application is app.py.
+# =============================================================================
 import sys
 import os
 

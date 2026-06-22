@@ -23,13 +23,13 @@ Prefer a diagnostic artifact folder produced by `tools/shopee_diagnostics.py` or
 If no artifact exists, create one with the project harness:
 
 ```powershell
-C:\Users\Admin\miniconda3\envs\vibe-env\python.exe tools/shopee_diagnostics.py --url "<shopee-url>" --strategy headless_ephemeral
+python tools/shopee_diagnostics.py --url "<shopee-url>" --strategy headless_ephemeral
 ```
 
 For interactive session seeding, use:
 
 ```powershell
-C:\Users\Admin\miniconda3\envs\vibe-env\python.exe tools/shopee_diagnostics.py --url "<shopee-url>" --strategy headful_persistent --manual-wait-seconds 180
+python tools/shopee_diagnostics.py --url "<shopee-url>" --strategy headful_persistent --manual-wait-seconds 180
 ```
 
 
@@ -40,10 +40,10 @@ Before using this skill in a user-visible workflow, state a compact disclosure s
 
 - Skill name and path.
 - Trigger: why this task falls under Shopee scrape recovery.
-- Intended use: diagnosis, hardening review, source patch, artifact capture, or handoff update.
+- Intended use: diagnosis, hardening review, source patch, artifact capture, or documentation-delta reporting.
 - Expected inputs and outputs.
 - Expected writes, live probes, browser launches, or escalated commands.
-- Post-hoc audit surface: files, artifacts, commands, and handoff rows the user can inspect.
+- Post-hoc audit surface: files, artifacts, commands, and the handoff/documentation delta the owner can inspect.
 
 If the skill is used only for private reasoning and no files/tools are touched, still mention the trigger and intended use before acting.
 ## Agent Hardening Gate
@@ -66,7 +66,9 @@ Use [references/quality-governance.md](references/quality-governance.md) for the
 4. Keep source changes inside provider/recovery boundaries: diagnostics harness, provider-specific Shopee module/strategy registry if introduced, and endpoint wiring only when the provider contract is stable.
 5. Preserve raw artifacts. Do not overwrite evidence from failed runs.
 6. Verify the smallest meaningful behavior after a change: classifier check, live probe, backend endpoint test, or screenshot review.
-7. Update `effective-verbal-context.md` only with durable facts: strategies tried, classification, artifact paths, pass/fail, and next action.
+7. Report the exact durable handoff delta: strategies tried, taxonomy version, stored/current
+   classification, artifact paths, pass/fail, and next action. Only the project owner applies that
+   delta through the owner-held handoff-writing capability.
 
 ## Recovery Decision Tree
 
@@ -96,7 +98,12 @@ Read [references/patch-policy.md](references/patch-policy.md) before changing ba
 Use `scripts/classify_artifact.py` to reclassify saved artifacts offline:
 
 ```powershell
-C:\Users\Admin\miniconda3\envs\vibe-env\python.exe .codex/skills/shopee-scrape-recovery/scripts/classify_artifact.py diagnostics/shopee/<run>/artifact.json
+python .codex/skills/shopee-scrape-recovery/scripts/classify_artifact.py diagnostics/shopee/<run>/artifact.json
 ```
+
+## Related Plugin Architecture
+
+From the `data-phinter-workflows` plugin root, read `references/overview.md` for the short entry map
+and `references/architecture.md` for the conditional recovery loop back into app verification.
 
 This is a smoke test for the skill taxonomy and does not launch a browser.

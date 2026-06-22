@@ -192,6 +192,9 @@ If the session discovers material new facts, corrections, bugs, changed files, o
 - Keep the handoff lean.
 - Record whether tests/commands were actually run.
 - Preserve user corrections as first-class checklist or clarification rows.
+- A project-specific owner-maintained policy overrides this fallback. If README says the handoff-writing
+  capability is retained by the owner, do not edit the handoff; report the exact documentation delta,
+  evidence, affected links, and urgency for the owner to apply.
 
 ## Common Failure Modes To Avoid
 
@@ -206,3 +209,23 @@ If the session discovers material new facts, corrections, bugs, changed files, o
 | Silently resolving conflict by recency alone | Prefer recency only among equal-scope, equal-authority claims; otherwise verify or ask. |
 | Asking unnecessary questions | Make reasonable choices when the handoff plus workspace gives enough information. |
 | Ignoring residual risk | State gaps clearly when the handoff is insufficient. |
+
+## Project Entry And Stranger Recovery
+
+When a project README directs a completely new agent to this skill:
+
+1. Treat the README and the primary handoff as the initial context artifact set.
+2. Follow the project's short plugin/workflow overview before opening detailed architecture.
+3. Recover every top-level workstream and its responsible skill, even when only one workstream is
+   immediately active. This prevents an apparently successful recovery with a structural blind spot.
+4. Name deeper architecture, source, config, tests, and artifact entry points so the agent can
+   explore independently instead of receiving a transcript-sized explanation.
+5. Report broken semantic links, missing workstreams, stale status, or conflicts between README,
+   handoff, plugin map, skills, and source as recovery findings.
+6. Do not assume the project owner's handoff-writing skill is bundled or available. If the README
+   says continuity maintenance is owner-held, treat the handoff as a readable project artifact and
+   report any required handoff/documentation delta instead of inventing a fifth plugin entry point.
+
+The compact recovery note should include the project map or link to it when available. Preserve links
+to the current short overview and detailed architecture when updating context. This recovery mode
+prepares an independent agent to inspect the project; it is not itself the external Stranger audit.
