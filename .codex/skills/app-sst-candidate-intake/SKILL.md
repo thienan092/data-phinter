@@ -1,6 +1,6 @@
 ---
 name: app-sst-candidate-intake
-description: Audit and operate the data-phinter app candidate-intake workflow after a NotebookLM run. Use when Codex needs to add default/candidate CSV data in the app, assess candidate quality or anomalies, deduplicate against the current SST, decide whether user confirmation is required, start verification, or prepare accumulation into the configured default store.
+description: Audit and operate the data-phinter app candidate-intake workflow after a NotebookLM run. Use when an agent needs to add default/candidate CSV data in the app, assess candidate quality or anomalies, deduplicate against the current SST, decide whether user confirmation is required, start verification, or prepare accumulation into the configured default store.
 ---
 
 # App SST Candidate Intake
@@ -30,9 +30,15 @@ verification, and accumulation.
 ## Workflow
 
 1. Resolve `config/default-data.json` and `config/current-candidate.json`.
-2. Run:
+2. Resolve the active skill directory, then run its bundled audit script. Claude plugin hosts expose
+   `${CLAUDE_SKILL_DIR}`; repository development may use the canonical fallback:
+
+   `python "<active-skill-dir>/scripts/audit_candidates.py"`
 
    `python .codex/skills/app-sst-candidate-intake/scripts/audit_candidates.py`
+
+   Claude plugin hosts can resolve `<active-skill-dir>` from `${CLAUDE_SKILL_DIR}`. Do not assume
+   one host-specific skill path exists on every agent.
 
 3. Read the JSON result before operating the app.
 4. Apply the decision gate:
@@ -43,7 +49,11 @@ verification, and accumulation.
 5. Resolve the app base URL before browser work. Use a user-supplied URL when present; otherwise
    use `http://127.0.0.1:<PORT>` where `PORT` is the running app's configured value (default `5000`).
    If no listener exists, start the supported `app.py` with `python app.py`; when the default port is
-   occupied, set `PORT` to a free port and report the selected URL. Then open `<base-url>/?agent=1`.
+   occupied, set `PORT` to a free port and report the selected URL. Then open `<base-url>/?agent=1`
+   through the current host's visible browser capability. If Cowork/Claude cannot reach the local
+   listener or control a browser, name that missing capability and use the machine-readable API or
+   a user-opened visible browser only when the same authorization and information-parity rules are
+   preserved.
 6. Click **Load default data**, then **Add candidate data**. Read hidden
    `#agent-import-status[data-code]` or `[agent-import]` JSON console logs; do not expose
    technical logs in the UI.
@@ -53,9 +63,14 @@ verification, and accumulation.
 9. Verify only candidate rows that remain after default-vs-candidate Link dedup. Do not re-verify
    default rows during candidate intake.
    - For small/manual batches, use **Verify/Update Price** in the app.
-   - For large batches, use app-owned `tools/verify_accumulate.py`: parallel BS4 over all novel
-     candidates, then serial CloakBrowser fallback for static non-hits. Preserve each attempt in a
-     unique output directory.
+   - Use Selenium-backed `compatible` mode by default. `fast` is an explicit BS4 option for suitable
+     static sources.
+   - For large batches, use app-owned `tools/verify_accumulate.py --mode compatible`. Preserve each
+     attempt in a unique output directory.
+   - Do not silently fallback to CloakBrowser. If compatible verification is insufficient, report
+     the evidence and propose `adaptive`; describe its scope and runtime/privacy impact, then wait
+     for user approval before using `--mode adaptive` or changing
+     `DATA_PHINTER_VERIFICATION_MODE`.
 10. Treat captcha, login, session expiry, access blocking, or ambiguous selector results as
     user-intervention events. Notify promptly and preserve the current state.
 11. Apply a second decision gate after verification:
@@ -109,9 +124,10 @@ Do not call a candidate set "good coverage" merely because its row target is met
 
 - **Load default data**, **Add candidate data**, and **Accumulate approved unique** are local
   automation affordances. They stay hidden in normal user mode and appear only with `?agent=1`.
-- Query mode and the automation header are routing/discoverability controls, not a strong security
-  boundary. A mutating accumulation request must also match the current run and a recorded
-  post-report user approval.
+- Query mode is only a visibility control. Loopback API calls also require the automation header.
+  Remote automation is denied by default and requires explicit enablement plus a matching
+  automation token. A mutating accumulation request must additionally match the current run and a
+  recorded post-report user approval.
 - Do not add a normal-user accumulation button merely to mirror the agent control. Preserve
   information parity through the report/decision/result flow: the user receives the selected
   standard, preview counts, write approval, backup, before/after counts, and terminal result; the

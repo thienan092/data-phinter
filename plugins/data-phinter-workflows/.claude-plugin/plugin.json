@@ -1,0 +1,19 @@
+{
+  "name": "data-phinter-workflows",
+  "description": "Recover context and generate, audit, verify, repair, and accumulate Data Phin-ter SST data.",
+  "version": "1.0.0",
+  "author": {
+    "name": "thienan092",
+    "url": "https://github.com/thienan092"
+  },
+  "homepage": "https://github.com/thienan092/data-phinter",
+  "repository": "https://github.com/thienan092/data-phinter",
+  "license": "Apache-2.0",
+  "keywords": [
+    "data-phinter",
+    "notebooklm",
+    "sst",
+    "data-verification",
+    "workflow"
+  ]
+}

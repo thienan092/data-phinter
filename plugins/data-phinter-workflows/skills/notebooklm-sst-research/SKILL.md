@@ -39,21 +39,44 @@ earlier only for authentication, quota, a true blocker, or a decision that chang
   hard-coded brands, niches, or domains.
 
 ## Environment
-- Drive NotebookLM at https://notebooklm.google.com through an installed Codex Browser Plugin or
-  Chrome Plugin. Discover the current browser-control tools with `tool_search`; prefer Node
-  REPL/Playwright control when that is the plugin's exposed interface.
-- Do not depend on historical tool names such as `tabs_context_mcp` or `javascript_tool`. If no
-  browser-control capability is installed or callable, stop and tell the user which Browser/Chrome
-  capability is missing instead of silently replacing browser work with HTTP requests.
+- Drive NotebookLM at https://notebooklm.google.com through the current host's installed,
+  user-authorized browser-control capability. Examples include a Codex Browser/Chrome plugin,
+  Claude for Chrome, or a permitted Playwright/browser tool exposed to Claude Code/Cowork.
+- Discover capabilities through the host's own tool/plugin interface. Do not prescribe a historical
+  tool name or assume that Codex and Claude expose the same browser API. Prefer control of the
+  user's existing signed-in tab when the host supports it.
+- If no interactive browser-control capability is installed/callable, or the execution context
+  cannot access the signed-in browser session, stop and name the missing capability. Do not silently
+  replace browser work with HTTP requests.
 - The user must be logged into Google. If a login screen appears, STOP and ask the user to log in — never
   handle login yourself. Each Google account (`authuser=N`) has its own quota; the user may open a tab on a
   second account to reset quota.
 
+## Recurring Execution Contract
+
+Before creating or updating a schedule, record:
+
+| Field | Required decision |
+|---|---|
+| Automation identity | Reuse the existing stable ID for the same purpose; never create a duplicate because the request was repeated. |
+| Cadence and timezone | Clarify daily, 12-hourly, or another interval. Update the existing definition in place. |
+| Run identity | Use the actual local start timestamp in every artifact filename, including automation ID plus `YYYYMMDD-HHMMSS`. |
+| Browser-session scope | Confirm whether the scheduled execution can control the intended signed-in browser context. |
+| Intervention route | Confirm the execution can notify the user promptly and preserve state for login, captcha, quota, download, or permission actions. |
+| Missed-run policy | Do not silently create multiple catch-up runs in one cadence window. Report skipped/deferred runs and start one uniquely identified run when eligible. |
+
+A detached scheduler that cannot access the interactive browser or request intervention is not a
+valid execution host for this workflow. Use an attached/foreground schedule, a host-supported
+interactive scheduled task, or a reminder that starts the run when the user/session is available.
+Do not spend the run budget building partial artifacts before this preflight passes.
+
 ## Workflow
-0. Discover and connect to the installed Browser/Chrome Plugin, reuse the user's existing tab when
-   available, then navigate to the notebook URL / notebooklm.google.com. Capture a screenshot or DOM
-   state to confirm login. The renderer on this SPA **freezes intermittently on screenshot** — recover
-   by re-navigating (reload) the same URL; server-side work is not lost.
+0. Identify the host (`Codex`, `Claude Code`, or `Claude/Cowork`) and run the browser/session and
+   intervention preflight from `references/runtime-prerequisites.md` when this skill is bundled.
+   Reuse the user's existing tab when available, then navigate to the notebook URL /
+   notebooklm.google.com. Capture a screenshot or DOM state to confirm login. The renderer on this
+   SPA can freeze intermittently on screenshot; recover by re-navigating (reload) the same URL.
+   Server-side work is not lost.
 1. **New notebook** (`+ Create notebook` / `+ Create new`).
 2. **Add the exemplar as a "Copied text" source** (NOT file upload — file_upload of repo files is rejected
    with "only files shared with this session"). Prepend a clean one-line header, e.g.: "MẪU ĐỊNH DẠNG SST &
@@ -63,10 +86,11 @@ earlier only for authentication, quota, a true blocker, or a decision that chang
    **"Deep Research"**, type an UN-STEERED query (topic + "tối thiểu 100 sản phẩm, đa dạng, KHÔNG trùng bộ
    mẫu trong notebook" + fields: tên, thương hiệu, nguồn, URL sản phẩm đầy đủ, loại, khối lượng, giá VND,
    phí ship, ngưỡng freeship, khu vực; ưu tiên URL sản phẩm trực tiếp). Submit (blue arrow). Phases:
-   Planning → Researching → Writing Report → "Deep Research completed!". Observed timing is commonly
-   10–12 minutes; allow up to about 15 minutes before treating it as stuck. Poll after roughly 60 seconds,
-   then every 90–180 seconds. Source ingestion is commonly about 1 minute and each Chat extraction about
-   1–2 minutes.
+   Planning → Researching → Writing Report → "Deep Research completed!". Observed runs commonly
+   complete in roughly 7–12 minutes; allow up to about 15 minutes before treating the job as stuck.
+   Poll after roughly 60–90 seconds, then every 90–180 seconds. Source ingestion is commonly about
+   1 minute and each Chat extraction about 1–2 minutes. A polling delay is not a blocker; report only
+   when the state exceeds the bounded wait or needs intervention.
 4. **Import** the report + ~20 discovered sources.
 5. **Extract** — TWO paths:
    - **Chat (PREFERRED — not Tables-limited, gives deep per-SKU URLs):** locate the chat input through
@@ -80,7 +104,7 @@ earlier only for authentication, quota, a true blocker, or a decision that chang
    - **Studio → Data Table → customize** (quota ~3/account/day): set language Tiếng Việt, prompt to follow
      the exemplar's 15-col format, "LIỆT KÊ ĐẦY ĐỦ MỌI sản phẩm, mỗi SKU 1 URL riêng, ≥100 dòng, không bịa".
      The output is a real `<table>` in the DOM (not virtualized) — read it directly with the active
-     browser tool or `page.evaluate` through Node REPL.
+     browser tool or an equivalent DOM-evaluation capability exposed by the current host.
 6. **Get the CSV to disk:** build the CSV into a Blob and trigger a download with a **unique filename**.
    Chrome **blocks repeated automatic downloads from one page** after the first — if a download doesn't
    land, re-open the notebook in a fresh tab (chat history persists) or ask the user to allow downloads.
@@ -131,6 +155,7 @@ and `references/architecture.md` for component boundaries and change-synchroniza
 - [Runtime prerequisites and stop behavior](../../references/runtime-prerequisites.md)
 
 When an accepted workflow improvement changes entry points, responsibilities, status contracts, or
-decision gates, synchronize plugin-owned skills/references and report the required README/handoff
-delta to the project owner. Do not assume the owner-held handoff-writing skill is bundled.
+decision gates, synchronize plugin-owned skills/references and report the required README/local
+handoff delta to the project owner. The committed context changes only through explicit
+virtualization. Do not assume the owner-held handoff-writing skill is bundled.
 <!-- plugin-navigation:end -->

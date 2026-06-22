@@ -38,19 +38,32 @@ def strip_navigation(text: str) -> str:
     return text[:start].rstrip() + "\n"
 
 
-def validate_manifest(errors: list[str]) -> None:
-    path = PLUGIN_ROOT / ".codex-plugin" / "plugin.json"
+def read_manifest(path: Path, errors: list[str]) -> dict:
     try:
         manifest = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        errors.append(f"invalid plugin manifest: {exc}")
-        return
+        errors.append(f"invalid plugin manifest {path.relative_to(PLUGIN_ROOT)}: {exc}")
+        return {}
     if manifest.get("name") != PLUGIN_ROOT.name:
-        errors.append("manifest name must match the plugin directory")
+        errors.append(f"{path.parent.name} manifest name must match the plugin directory")
     if not SEMVER.fullmatch(str(manifest.get("version", ""))):
-        errors.append("manifest version is not semantic versioning")
+        errors.append(f"{path.parent.name} manifest version is not semantic versioning")
+    return manifest
+
+
+def validate_manifest(errors: list[str]) -> None:
+    codex_path = PLUGIN_ROOT / ".codex-plugin" / "plugin.json"
+    claude_path = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
+    codex_manifest = read_manifest(codex_path, errors)
+    claude_manifest = read_manifest(claude_path, errors)
+
+    if codex_manifest.get("version") != claude_manifest.get("version"):
+        errors.append("Codex and Claude plugin manifest versions differ")
+    if codex_manifest.get("description") != claude_manifest.get("description"):
+        errors.append("Codex and Claude plugin manifest descriptions differ")
+    manifest = codex_manifest
     if manifest.get("skills") != "./skills/":
-        errors.append("manifest skills path must be ./skills/")
+        errors.append("Codex manifest skills path must be ./skills/")
 
 
 def validate_skill_snapshot(errors: list[str]) -> None:
@@ -107,6 +120,8 @@ def validate_access_contract(errors: list[str]) -> None:
     ).read_text(encoding="utf-8")
     plugin_readme = (PLUGIN_ROOT / "README.md").read_text(encoding="utf-8")
     repo_readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    public_context = (REPO_ROOT / "effective-verbal-context.md").read_text(encoding="utf-8")
+    gitignore = (REPO_ROOT / ".gitignore").read_text(encoding="utf-8")
     for name in SKILLS:
         if name not in overview:
             errors.append(f"short overview does not expose plugin skill: {name}")
@@ -116,10 +131,36 @@ def validate_access_contract(errors: list[str]) -> None:
         errors.append("detailed architecture is missing the information-parity contract")
     if "Accumulate approved unique" not in repo_readme:
         errors.append("repository README does not explain the agent-only accumulation control")
+    if "not submitted to or persisted by the Data Phin-ter backend" not in repo_readme:
+        errors.append("repository README does not scope the Gemini API-key privacy statement")
+    if "absolute user data security" in repo_readme.lower():
+        errors.append("repository README still makes an absolute API-key security claim")
     if "read-effective-verbal-context" not in repo_readme:
         errors.append("repository README does not expose the required stranger entry skill")
+    if "effective-verbal-context.local.md" not in repo_readme:
+        errors.append("repository README does not expose local context materialization")
+    if "STARTER-CONTEXT.md" in repo_readme:
+        errors.append("repository README still points to the superseded starter context")
+    if "effective-verbal-context.local.md" not in public_context:
+        errors.append("public context does not explain its local materialized counterpart")
+    if "/effective-verbal-context.md" in gitignore:
+        errors.append("public effective verbal context is still gitignored")
+    if "/effective-verbal-context.local.md" not in gitignore:
+        errors.append("local effective verbal context is not gitignored")
     if "Runtime Prerequisites And Stop Behavior" not in prerequisites:
         errors.append("runtime prerequisites do not expose pre-execution stop behavior")
+    for mode in ("compatible", "fast", "adaptive"):
+        if mode not in overview:
+            errors.append(f"short overview does not expose verification mode: {mode}")
+    if "Evidence + proposal + approval" not in overview:
+        errors.append("short overview does not expose the adaptive approval gate")
+    if "ENABLE_REMOTE_AGENT_AUTOMATION" not in prerequisites:
+        errors.append("runtime prerequisites do not expose remote agent authorization")
+    for host in ("Codex", "Claude Code", "Claude Desktop / Cowork"):
+        if host not in prerequisites:
+            errors.append(f"runtime prerequisites do not expose host adapter: {host}")
+    if "effective-verbal-context.local.md" not in artifact_contract:
+        errors.append("artifact contract does not define the local context artifact")
     if "Legacy Provenance" not in artifact_contract:
         errors.append("artifact contract does not explain historical provenance limitations")
 
@@ -150,6 +191,9 @@ def validate_policy_regressions(errors: list[str]) -> None:
     intake_skill = (
         SOURCE_ROOT / "app-sst-candidate-intake" / "SKILL.md"
     ).read_text(encoding="utf-8")
+    context_skill = (
+        SOURCE_ROOT / "read-effective-verbal-context" / "SKILL.md"
+    ).read_text(encoding="utf-8")
 
     for required in (
         REPO_ROOT / "pipeline" / "candidate_quality.py",
@@ -163,6 +207,10 @@ def validate_policy_regressions(errors: list[str]) -> None:
         errors.append("NotebookLM skill still requires the obsolete Claude-in-Chrome interface")
     if "tabs_context_mcp (createIfEmpty)" in notebook_skill:
         errors.append("NotebookLM skill still prescribes an obsolete browser tool call")
+    if "installed Codex Browser Plugin" in notebook_skill or "with `tool_search`" in notebook_skill:
+        errors.append("NotebookLM skill still requires a Codex-specific browser adapter")
+    if "Recurring Execution Contract" not in notebook_skill:
+        errors.append("NotebookLM skill does not define scheduler/browser-session preflight")
     if "LEGACY_UNSUPPORTED" not in legacy_builder:
         errors.append("legacy steered request builder is not clearly disabled")
     if "audit-only" not in exemplar_builder.lower():
@@ -175,6 +223,14 @@ def validate_policy_regressions(errors: list[str]) -> None:
         errors.append("app intake skill hard-codes a prior-session port")
     if "python app.py" not in intake_skill or "default `5000`" not in intake_skill:
         errors.append("app intake skill does not expose the supported start command and port rule")
+    if "--mode compatible" not in intake_skill or "--mode adaptive" not in intake_skill:
+        errors.append("app intake skill does not expose compatible/adaptive verification policy")
+    if "Do not" not in context_skill or "activate `adaptive`" not in context_skill:
+        errors.append("context recovery skill does not prevent automatic adaptive activation")
+    if "python tools/context_handoff.py materialize" not in context_skill:
+        errors.append("context recovery skill does not materialize the canonical local context")
+    if "effective-verbal-context.local.md" not in context_skill:
+        errors.append("context recovery skill does not prioritize the canonical local context")
     if "Delete the `app.py` file" in repo_readme or "Xóa file `app.py`" in repo_readme:
         errors.append("repository README still tells strangers to replace the supported app")
     if "under 3k lines" in repo_readme or "dưới 3k dòng" in repo_readme:
@@ -205,7 +261,10 @@ def main() -> None:
         for error in errors:
             print(f"ERROR: {error}", file=sys.stderr)
         raise SystemExit(1)
-    print(f"bundle valid: {len(SKILLS)} skills, semantic links intact")
+    print(
+        f"bundle valid: {len(SKILLS)} skills, Codex/Claude manifests, "
+        "context and semantic links intact"
+    )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 ---
 name: shopee-scrape-recovery
-description: Diagnose and recover Shopee scraping failures in the data-phinter backend. Use when Shopee extraction or verification fails, a diagnostic artifact/report/screenshot is available, traffic verification or captcha blocks scraping, selectors stop working, product/search pages load without prices, or Codex needs to propose bounded source changes for Shopee without hardcoding a brittle one-off bypass.
+description: Diagnose and recover Shopee scraping failures in the data-phinter backend. Use when Shopee extraction or verification fails, a diagnostic artifact/report/screenshot is available, traffic verification or captcha blocks scraping, selectors stop working, product/search pages load without prices, or an agent needs to propose bounded source changes without hardcoding a brittle one-off bypass.
 ---
 
 # Shopee Scrape Recovery
@@ -97,9 +97,16 @@ Read [references/patch-policy.md](references/patch-policy.md) before changing ba
 
 Use `scripts/classify_artifact.py` to reclassify saved artifacts offline:
 
-```powershell
+```text
+python "<active-skill-dir>/scripts/classify_artifact.py" diagnostics/shopee/<run>/artifact.json
+
+# Repository-development fallback:
 python .codex/skills/shopee-scrape-recovery/scripts/classify_artifact.py diagnostics/shopee/<run>/artifact.json
 ```
+
+Claude plugin hosts can resolve `<active-skill-dir>` from `${CLAUDE_SKILL_DIR}`. Use the active
+host's skill-directory mechanism when available; do not assume the `.codex` fallback exists in an
+installed Claude/Cowork plugin.
 
 ## Related Plugin Architecture
 
@@ -117,6 +124,7 @@ This is a smoke test for the skill taxonomy and does not launch a browser.
 - [Runtime prerequisites and stop behavior](../../references/runtime-prerequisites.md)
 
 When an accepted workflow improvement changes entry points, responsibilities, status contracts, or
-decision gates, synchronize plugin-owned skills/references and report the required README/handoff
-delta to the project owner. Do not assume the owner-held handoff-writing skill is bundled.
+decision gates, synchronize plugin-owned skills/references and report the required README/local
+handoff delta to the project owner. The committed context changes only through explicit
+virtualization. Do not assume the owner-held handoff-writing skill is bundled.
 <!-- plugin-navigation:end -->

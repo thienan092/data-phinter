@@ -30,9 +30,12 @@ sample_data.*.bak.csv
 /config/current-candidate.json
 /config/current-verification.json
 
-# Owner-maintained local session handoff and raw audit reports (kept local,
-# not published). Public clones start from STARTER-CONTEXT.md instead.
-/effective-verbal-context.md
+# Local session handoff and raw audit reports. The portable
+# effective-verbal-context.md is committed; its machine-specific materialized
+# counterpart is not.
+/effective-verbal-context.local.md
+/effective-verbal-context.local.audit*.md
+/effective-verbal-context-local.md
 /notebooklm-pipeline-handoff.md
 /audits/
 

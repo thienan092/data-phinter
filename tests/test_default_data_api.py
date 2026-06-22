@@ -1,5 +1,6 @@
 import csv
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -21,6 +22,63 @@ class DefaultDataApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 403)
         response = self.client.post("/api/agent/accumulation")
         self.assertEqual(response.status_code, 403)
+
+    def test_remote_agent_request_requires_explicit_enablement_and_token(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ENABLE_REMOTE_AGENT_AUTOMATION", None)
+            os.environ.pop("AGENT_AUTOMATION_TOKEN", None)
+            response = self.client.get(
+                "/api/agent/default-data",
+                headers={"X-Agent-Automation": "1"},
+                environ_overrides={"REMOTE_ADDR": "203.0.113.20"},
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.get_json()["code"],
+            "remote_agent_automation_forbidden",
+        )
+
+    def test_public_host_through_loopback_proxy_still_requires_token(self):
+        response = self.client.get(
+            "/api/agent/default-data",
+            headers={"X-Agent-Automation": "1", "Host": "data-phinter.example"},
+            environ_overrides={"REMOTE_ADDR": "127.0.0.1"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.get_json()["code"],
+            "remote_agent_automation_forbidden",
+        )
+
+    def test_remote_agent_request_accepts_enabled_matching_token(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            csv_path = root / "current.csv"
+            csv_path.write_text("ID,Product\n1,Coffee\n", encoding="utf-8")
+            config_path = root / "default-data.json"
+            config_path.write_text(json.dumps({"path": str(csv_path)}), encoding="utf-8")
+
+            with patch.object(app_module, "DEFAULT_DATA_CONFIG", config_path), patch.dict(
+                os.environ,
+                {
+                    "ENABLE_REMOTE_AGENT_AUTOMATION": "1",
+                    "AGENT_AUTOMATION_TOKEN": "test-secret",
+                },
+                clear=False,
+            ):
+                response = self.client.get(
+                    "/api/agent/default-data",
+                    headers={
+                        "X-Agent-Automation": "1",
+                        "X-Agent-Automation-Token": "test-secret",
+                    },
+                    environ_overrides={"REMOTE_ADDR": "203.0.113.20"},
+                )
+                response.close()
+
+        self.assertEqual(response.status_code, 200)
 
     def test_configured_csv_is_returned(self):
         with tempfile.TemporaryDirectory() as temp_dir:

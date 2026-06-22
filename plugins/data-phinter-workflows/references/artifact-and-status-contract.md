@@ -1,5 +1,17 @@
 # Artifact And Status Contract
 
+## Context Artifacts
+
+| Artifact | Status contract |
+|---|---|
+| `effective-verbal-context.md` | Committed, virtualized, machine-independent project context |
+| `effective-verbal-context.local.md` | Gitignored local working context created on first recovery and preferred for machine/run state |
+
+The public context is not a copy of the maintainer's local handoff. Publication is an explicit
+virtualization step that removes private/local/generated state while preserving discoverability.
+The legacy `effective-verbal-context-local.md` name may be migrated but is never the canonical
+working path.
+
 ## Canonical Pointers
 
 | Pointer | Meaning |
@@ -28,7 +40,7 @@ provenance but is not strict completion.
 The agent never silently chooses between them.
 
 An accumulation preview is non-mutating. Commit additionally requires the current verification state
-to record a matching post-report user decision; agent mode or an automation header alone is not
+to record a matching post-report user decision; query mode or an automation header alone is not
 sufficient approval.
 
 ## Legacy Provenance

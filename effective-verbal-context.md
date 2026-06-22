@@ -1,0 +1,126 @@
+# Effective Verbal Context: Data Phin-ter
+
+This is the project's release-safe, virtualized handoff. It is committed with the repository and
+contains only machine-independent project context. A fresh clone has no prior session state, so this
+file describes the project, its boundaries, and where local state will live, never the values of any
+one private run. Reconcile every claim against current source, config, tests, and plugin references;
+do not trust prose over code.
+
+> Continuity note: this committed handoff stays machine-independent (no absolute paths, private URLs,
+> credentials, account identifiers, or per-run values). On first context recovery,
+> `read-effective-verbal-context` materializes `effective-verbal-context.local.md`. That gitignored
+> file is the primary working handoff for machine/run state. Later reads prefer it while still
+> reconciling durable project rules with this public baseline and current source.
+
+## Context lifecycle
+
+| Artifact | Scope | Rule |
+|---|---|---|
+| `effective-verbal-context.md` | Portable project context shipped through Git | Keep virtualized and sufficient for a fresh clone; never store local paths, private URLs, credentials, account state, or generated-run specifics. |
+| `effective-verbal-context.local.md` | Materialized local working context | Create on first recovery, keep gitignored, and prefer for machine/runtime/run state. |
+| `write-effective-verbal-context` | Owner-retained maintenance capability | Write the local context by default. Only update this public file when the request explicitly asks to virtualize/publish the local result. |
+
+The legacy name `effective-verbal-context-local.md` is migration input only. When it exists and the
+canonical local file does not, preserve its content by materializing the canonical
+`effective-verbal-context.local.md`, then use the canonical name.
+
+## Objective
+
+Data Phin-ter accumulates a "single source of truth" (SST) dataset of products that each have a
+verifiable source link and price, and grows it over time. Generation proposes candidate rows; the app
+verifies each claimed price against its live source page, then deduplicates and accumulates approved
+rows. The shipped example is a Vietnamese coffee-market dataset (`sample_data.csv`), but the workflow
+is domain-agnostic: point `config/default-data.json` at your own CSV with the same schema.
+
+## Workflow loop
+
+```
+default dataset -> candidate generation -> candidate intake (audit)
+-> source verification -> report & decision gate -> approved accumulation
+-> improvement notes for the next run
+```
+
+## Workstreams and responsible skills
+
+| Need | Entry skill |
+|---|---|
+| Understand or resume the project | `read-effective-verbal-context` |
+| Produce a new candidate artifact | `notebooklm-sst-research` |
+| Audit, verify, report, and accumulate a candidate set | `app-sst-candidate-intake` |
+| Diagnose a Shopee-specific failure | `shopee-scrape-recovery` |
+
+Handoff writing is owner-maintained outside the plugin; a stranger reports documentation deltas
+rather than rewriting the handoff.
+
+## Ownership boundaries (do not cross)
+
+- Generation only proposes candidate rows. It never merges, verifies, or writes the default store.
+- The app owns audit, verification, dedup, and accumulation. Accumulation is approval-gated, backed
+  up, atomic, and idempotent.
+- Coverage/novelty are audit metrics computed on a simulated union; they never mutate data.
+- Cross-run reporting belongs to the agent workflow, not an in-app dashboard.
+- Verification defaults to Selenium-backed `compatible`. `fast` is the explicit BS4 option.
+  `adaptive` is a discoverable CloakBrowser/provider escalation that requires evidence, a proposal,
+  and user approval before execution.
+
+## Operating rules (quality bar)
+
+- Report before any approved branch: after verification, run the report/decision gate, then act only
+  on the user's chosen branch (accumulate / repair / improve).
+- No silent acceptance: `unique` vs `present` price acceptance, anomaly handling, and any write to the
+  configured default store require an explicit decision.
+- Do not steer generation with hard niche/brand/domain lists; use an exemplar plus a URL exclusion
+  index. Diversity and count nudges are fine.
+- Stable automation identity: if you schedule recurring generation, reuse one automation id and write
+  unique, timestamped run artifacts; never overwrite.
+- Scheduled NotebookLM work must preflight whether its execution host can control the intended
+  signed-in browser session and route human intervention. A detached scheduler without those
+  capabilities is not an eligible execution host; use an attached/interactive run or stop with the
+  exact missing capability.
+- Solve, classify, or reject problem rows (selector / recipe / direct URL / intervention) — do not
+  hand back raw symptoms.
+
+## Where things live
+
+- Context: `effective-verbal-context.md` (public), `effective-verbal-context.local.md` (generated
+  local), and `tools/context_handoff.py` (materialize/validate helper).
+- App: `app.py` (supported entry; default port `5000`, agent mode `?agent=1`), `app_accumulation.py`,
+  `index.html`. `sel_app.py` and `live_test.py` are legacy/reference only.
+- Config: `config/default-data.json` is the portable pointer to the default CSV. Per-run pointers
+  (`config/current-candidate.json`, `config/current-verification.json`) are created by your own runs
+  and are intentionally not shipped.
+- Generation support: `pipeline/` (exemplar builder, run aggregation, strict-candidate validation).
+- Verification / accumulation: `tools/`, `app_accumulation.py`.
+- Plugin map: `plugins/data-phinter-workflows/references/overview.md`, then `architecture.md`,
+  `artifact-and-status-contract.md`, and `runtime-prerequisites.md`.
+- Cross-agent entry: Codex uses the repository/plugin skill entry points. Claude Code can load the
+  same bundle with `--plugin-dir`; Claude Desktop/Cowork can install or upload the Claude plugin
+  package. Tool-dependent workflows still require the host capabilities listed in runtime
+  prerequisites.
+
+## Operational glossary
+
+| Term | Meaning |
+|---|---|
+| Configured default data | The cumulative trusted store; CSV path declared in `config/default-data.json`. |
+| Strict candidate | A topic-valid purchasable product with a full HTTP(S) direct product URL and a listed price; listing / category / search / blog URLs do not count unless verified as one product. |
+| Novel vs default | A candidate whose normalized URL is absent from the configured default URL set. |
+| Simulated union | A URL union used only for audit; it never writes either file. |
+| Accumulation | Approval-gated app write: preview + dedup by `Link` + backup + atomic replace + event log; idempotent. |
+| Extraction recipe | A reusable price method: CSS text selector, `selector::content` attribute, or `jsonld:Product.offers.price`. |
+| Intervention event | Captcha, login / session expiry, access block, or another human-only condition needing prompt notification. |
+
+## Fresh-clone state and how to start
+
+A fresh clone has no prior run: no `data_out/`, no current candidate / verification pointers, no browser
+profiles. Start from `sample_data.csv`, generate your own candidates, then let the app verify and
+accumulate. Respect each source site's Terms of Service and `robots.txt`; see the README's
+responsible-use note.
+
+## Verifying the project
+
+Use your own Python interpreter (the repo pins no machine path). From the repo root:
+
+- Unit tests: `python -m unittest discover -s tests -p 'test_*.py'`.
+- Plugin bundle: `python plugins/data-phinter-workflows/scripts/validate_bundle.py`.
+- After edits, check whitespace: `git diff --check`.

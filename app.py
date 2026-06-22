@@ -3,10 +3,11 @@ import platform
 import sys
 import json
 import csv
+import hmac
+import ipaddress
 from pathlib import Path
 from app_accumulation import build_accumulation_plan, commit_accumulation
 
-DEFAULT_MODE = "cloak"
 import re
 import requests
 from flask import Flask, request, jsonify, redirect, send_file, send_from_directory
@@ -35,6 +36,19 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_DATA_CONFIG = PROJECT_ROOT / "config" / "default-data.json"
 CANDIDATE_DATA_CONFIG = PROJECT_ROOT / "config" / "current-candidate.json"
 VERIFICATION_CONFIG = PROJECT_ROOT / "config" / "current-verification.json"
+MODE_ALIASES = {
+    "fast": "fast",
+    "bs4": "fast",
+    "compatible": "compatible",
+    "selenium": "compatible",
+    "adaptive": "adaptive",
+    "cloak": "adaptive",
+    "cloakbrowser": "adaptive",
+}
+DEFAULT_MODE = MODE_ALIASES.get(
+    os.environ.get("DATA_PHINTER_VERIFICATION_MODE", "compatible").strip().lower(),
+    "compatible",
+)
 
 HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
@@ -47,6 +61,51 @@ def get_cloak_browser():
     proxy_dict = {"server": proxy} if proxy else None
     # Default to headless=True as requested, with humanize=True for stealth
     return launch(headless=True, humanize=True, proxy=proxy_dict)
+
+
+def find_cached_selenium_pair(cache_root=None):
+    cache_root = Path(cache_root or (Path.home() / ".cache" / "selenium"))
+    driver_name = "chromedriver.exe" if platform.system() == "Windows" else "chromedriver"
+    browser_name = "chrome.exe" if platform.system() == "Windows" else "chrome"
+    pairs = []
+    for driver_path in cache_root.glob(f"chromedriver/*/*/{driver_name}"):
+        platform_name = driver_path.parent.parent.name
+        version = driver_path.parent.name
+        browser_path = cache_root / "chrome" / platform_name / version / browser_name
+        if browser_path.is_file():
+            version_key = tuple(
+                int(part) if part.isdigit() else 0
+                for part in version.split(".")
+            )
+            pairs.append((version_key, driver_path, browser_path))
+    if not pairs:
+        return None, None
+    _, driver_path, browser_path = max(pairs, key=lambda item: item[0])
+    return driver_path, browser_path
+
+
+def get_selenium_driver():
+    from selenium import webdriver
+    from selenium.webdriver.chrome.options import Options
+    from selenium.webdriver.chrome.service import Service
+
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-infobars")
+    driver_path = os.environ.get("CHROMEDRIVER_PATH")
+    browser_path = os.environ.get("CHROME_BINARY")
+    if not driver_path and not browser_path:
+        cached_driver, cached_browser = find_cached_selenium_pair()
+        driver_path = str(cached_driver) if cached_driver else None
+        browser_path = str(cached_browser) if cached_browser else None
+    if browser_path:
+        options.binary_location = browser_path
+    service = Service(executable_path=driver_path) if driver_path else Service()
+    return webdriver.Chrome(service=service, options=options)
 
 
 def _price_from_jsonld(soup):
@@ -124,6 +183,36 @@ def verify_price_cloak(url: str, price: int):
         if browser:
             browser.close()
         return {"passed": False, "min_count": -1}
+
+
+def extract_price_selenium(url: str, selector: str):
+    driver = None
+    try:
+        driver = get_selenium_driver()
+        driver.get(url)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        return _extract_price_from_soup(soup, selector)
+    except Exception as exc:
+        print(f"[Selenium] Price extraction failed for {url}: {exc}")
+    finally:
+        if driver:
+            driver.quit()
+    return None
+
+
+def verify_price_selenium(url: str, price: int):
+    driver = None
+    try:
+        driver = get_selenium_driver()
+        driver.get(url)
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+        return _verify_price_from_soup(soup, price)
+    except Exception as exc:
+        print(f"[Selenium] Price verification failed for {url}: {exc}")
+        return {"passed": False, "min_count": -1}
+    finally:
+        if driver:
+            driver.quit()
 
 # ========== BS4 ==========
 
@@ -230,20 +319,87 @@ def has_recorded_accumulation_approval(config, acceptance):
         and decision.get("acceptance") == acceptance
     )
 
+
+def normalize_verification_mode(value):
+    return MODE_ALIASES.get(str(value or "").strip().lower())
+
+
+def requested_verification_mode(data):
+    requested = data.get("mode") if isinstance(data, dict) else None
+    if requested is None:
+        return DEFAULT_MODE
+    return normalize_verification_mode(requested)
+
+
+def _is_loopback_request():
+    try:
+        remote_is_loopback = ipaddress.ip_address(request.remote_addr or "").is_loopback
+    except ValueError:
+        return False
+    host = (urlparse(f"//{request.host}").hostname or "").lower()
+    if host == "localhost":
+        host_is_loopback = True
+    else:
+        try:
+            host_is_loopback = ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            host_is_loopback = False
+    return remote_is_loopback and host_is_loopback
+
+
+def _remote_agent_automation_enabled():
+    return os.environ.get("ENABLE_REMOTE_AGENT_AUTOMATION", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def require_agent_automation():
+    if request.headers.get("X-Agent-Automation") != "1":
+        return jsonify({
+            "error": "This endpoint is reserved for agent automation.",
+            "code": "agent_header_required",
+        }), 403
+    if _is_loopback_request():
+        return None
+    expected = os.environ.get("AGENT_AUTOMATION_TOKEN", "")
+    provided = request.headers.get("X-Agent-Automation-Token", "")
+    if (
+        _remote_agent_automation_enabled()
+        and expected
+        and hmac.compare_digest(provided, expected)
+    ):
+        return None
+    return jsonify({
+        "error": (
+            "Remote agent automation is disabled or the automation token is invalid. "
+            "Use loopback, or explicitly enable remote automation and provide its token."
+        ),
+        "code": "remote_agent_automation_forbidden",
+    }), 403
+
+
 @app.route('/api/check-price', methods=['POST'])
 def handle_check_price():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     url = data.get('url')
     selector = data.get('selector')
     request_id = data.get('request_id')
-    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định cloak
+    mode = requested_verification_mode(data)
 
-    if not url or (not selector and not (mode != 'bs4' and is_shopee_url(url))):
+    if mode is None:
+        return jsonify({
+            "error": "Unsupported verification mode. Use fast, compatible, or adaptive."
+        }), 400
+
+    if not url or (not selector and not (mode == "adaptive" and is_shopee_url(url))):
         return jsonify({"error": "Thiếu URL hoặc bộ chọn"}), 400
 
     print(f"[Check Price] URL: {url}, Selector: {selector}, Mode: {mode}")
 
-    if mode != 'bs4' and is_shopee_url(url):
+    if mode == "adaptive" and is_shopee_url(url):
         result = extract_price_shopee(url, selector, request_id=request_id)
         response = result.to_response()
         response.update(_manual_action_response(result.status, request_id))
@@ -252,22 +408,29 @@ def handle_check_price():
         response["error"] = response.get("error") or f"Shopee extraction status: {result.status}"
         return jsonify(response), shopee_http_status_for(result, "extract")
 
-    if mode == 'bs4':
+    if mode == "fast":
         price = extract_price_bs4(url, selector)
+    elif mode == "compatible":
+        price = extract_price_selenium(url, selector)
     else:
         price = extract_price_cloak(url, selector)
 
     if price is not None:
-        return jsonify({"price": price})
+        return jsonify({"price": price, "verification_mode": mode})
     return jsonify({"error": "Không thể trích xuất giá.", "price": None}), 404
 
 @app.route('/api/verify-price-by-text', methods=['POST'])
 def handle_verify_price():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     url = data.get('url')
     price = data.get('price')
     request_id = data.get('request_id')
-    mode = data.get('mode', DEFAULT_MODE).lower()  # ✅ Mặc định cloak
+    mode = requested_verification_mode(data)
+
+    if mode is None:
+        return jsonify({
+            "error": "Unsupported verification mode. Use fast, compatible, or adaptive."
+        }), 400
 
     if not url or price is None:
         return jsonify({"error": "Thiếu URL hoặc giá để xác minh"}), 400
@@ -279,7 +442,7 @@ def handle_verify_price():
 
     print(f"[Verify Price] URL: {url}, Price: {price}, Mode: {mode}")
 
-    if mode != 'bs4' and is_shopee_url(url):
+    if mode == "adaptive" and is_shopee_url(url):
         result = verify_price_shopee(url, price, request_id=request_id)
         response = result.to_response()
         response.update({
@@ -291,14 +454,17 @@ def handle_verify_price():
             response["error"] = response.get("error") or f"Shopee verification status: {result.status}"
         return jsonify(response), shopee_http_status_for(result, "verify")
 
-    if mode == 'bs4':
+    if mode == "fast":
         result = verify_price_bs4(url, price)
+    elif mode == "compatible":
+        result = verify_price_selenium(url, price)
     else:
         result = verify_price_cloak(url, price)
 
     return jsonify({
         "found_uniquely": result["passed"],
-        "match_count": result["min_count"]
+        "match_count": result["min_count"],
+        "verification_mode": mode,
     })
 
 
@@ -371,13 +537,17 @@ def serve_static(path):
     
 @app.route('/api/default-mode', methods=['GET'])
 def get_default_mode():
-    return jsonify({"default_mode": DEFAULT_MODE})
+    return jsonify({
+        "default_mode": DEFAULT_MODE,
+        "available_modes": ["fast", "compatible", "adaptive"],
+    })
 
 
 @app.route('/api/agent/default-data', methods=['GET'])
 def get_agent_default_data():
-    if request.headers.get("X-Agent-Automation") != "1":
-        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+    denied = require_agent_automation()
+    if denied:
+        return denied
 
     try:
         data_path, configured_path = get_default_data_path()
@@ -398,8 +568,9 @@ def get_agent_default_data():
 
 @app.route('/api/agent/candidate-data', methods=['GET'])
 def get_agent_candidate_data():
-    if request.headers.get("X-Agent-Automation") != "1":
-        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+    denied = require_agent_automation()
+    if denied:
+        return denied
 
     try:
         data_path, configured_path = get_configured_csv_path(CANDIDATE_DATA_CONFIG)
@@ -420,8 +591,9 @@ def get_agent_candidate_data():
 
 @app.route('/api/agent/verification-summary', methods=['GET'])
 def get_agent_verification_summary():
-    if request.headers.get("X-Agent-Automation") != "1":
-        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+    denied = require_agent_automation()
+    if denied:
+        return denied
 
     try:
         config = json.loads(VERIFICATION_CONFIG.read_text(encoding="utf-8"))
@@ -465,8 +637,9 @@ def get_agent_verification_summary():
 
 @app.route('/api/agent/accumulation', methods=['POST'])
 def post_agent_accumulation():
-    if request.headers.get("X-Agent-Automation") != "1":
-        return jsonify({"error": "This endpoint is reserved for agent automation."}), 403
+    denied = require_agent_automation()
+    if denied:
+        return denied
 
     payload = request.get_json(silent=True) or {}
     acceptance = payload.get("acceptance", "unique")

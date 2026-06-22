@@ -13,10 +13,13 @@ Hơn nữa, mã nguồn và giao diện được tổ chức theo các điểm v
 ### Điểm vào dành cho agent
 
 Agent hoàn toàn mới phải đọc README này trước, sau đó dùng skill
-[read-effective-verbal-context](.codex/skills/read-effective-verbal-context/) để phục hồi trạng thái khởi đầu từ
-[STARTER-CONTEXT.md](STARTER-CONTEXT.md). Agent có thể tự diễn đạt prompt, nhưng kết
-quả cần chỉ ra được các luồng công việc chính, skill phụ trách, ranh giới, artifact, việc đã đóng,
-nhánh tùy chọn, xung đột và điểm vào tiếp theo; không chỉ tóm tắt README hoặc dựa vào chat cũ.
+[read-effective-verbal-context](plugins/data-phinter-workflows/skills/read-effective-verbal-context/)
+để tạo hoặc đọc `effective-verbal-context.local.md` từ bản ảo hóa được commit tại
+[effective-verbal-context.md](effective-verbal-context.md). File local được ưu tiên cho trạng thái
+máy/run nhưng luôn phải được đối chiếu với source, config và bản public. Agent có thể tự diễn đạt
+prompt, nhưng kết quả cần chỉ ra được các luồng công việc chính, skill phụ trách, ranh giới,
+artifact, việc đã đóng, nhánh tùy chọn, xung đột và điểm vào tiếp theo; không chỉ tóm tắt README
+hoặc dựa vào chat cũ.
 
 Sơ đồ đầu tiên cần đọc là [tổng quan workflow ngắn](plugins/data-phinter-workflows/references/overview.md);
 [kiến trúc chi tiết](plugins/data-phinter-workflows/references/architecture.md) là tầng tra cứu tiếp theo.
@@ -26,6 +29,15 @@ Audit đánh giá khả năng tiếp cận trong workspace hiện tại. Publica
 tạo từ một committed checkout là các release gate riêng. Trong một blind audit, báo cáo của các vòng
 trước có thể được tạm giữ ngoài workspace để không làm lộ đường khám phá kỳ vọng; khi đó lịch sử audit
 có thể được ghi là chưa kiểm chứng, nhưng không được coi là context của plugin bị thiếu.
+
+### Codex, Claude Code và Cowork
+
+Bundle skill trong `plugins/data-phinter-workflows/skills/` dùng chung cho các host. Claude Code có
+thể nạp trực tiếp plugin bằng `--plugin-dir`; Claude Desktop/Cowork có thể cài hoặc upload cùng gói
+plugin. Tuy nhiên, khả năng tool không tự động đi theo skill: chạy NotebookLM vẫn cần browser control
+được người dùng cho phép và truy cập được đúng phiên đăng nhập; thao tác app local vẫn cần quyền
+file/shell và kết nối tới listener loopback. Nếu thiếu khả năng, agent phải nêu đúng phần còn thiếu
+thay vì âm thầm đổi sang một cơ chế khác.
 
 ---
 
@@ -42,19 +54,24 @@ Furthermore, source and UI behavior are organized through discoverable entry poi
 ## Agent Entry Point And Stranger Audit
 
 An agent that is completely new to this project must start by reading this README, then use
-[read-effective-verbal-context](.codex/skills/read-effective-verbal-context/) to recover the project's
-starting state from [STARTER-CONTEXT.md](STARTER-CONTEXT.md). The skill should reconcile that context
-with current source, config, tests, and artifacts instead of treating prose as unquestionable.
+[read-effective-verbal-context](plugins/data-phinter-workflows/skills/read-effective-verbal-context/)
+to recover the project's
+starting state. The committed [effective-verbal-context.md](effective-verbal-context.md) is a
+machine-independent baseline. On first use, the skill materializes the gitignored
+`effective-verbal-context.local.md`; later recovery prefers that local file for machine/run state
+while reconciling it with the public baseline and current source, config, tests, and artifacts.
 
 Suggested prompt (rephrasing is allowed):
 
-> Read this README, then use `read-effective-verbal-context` to recover the project objective,
-> top-level workstreams and responsible skills, active constraints, current state, artifacts,
-> closed work, optional branches, conflicts, and next entry points. Verify material claims against
-> source/config and give me a compact project map before continuing.
+> Read this README, then use `read-effective-verbal-context` to materialize or load the local context
+> and recover the project objective, top-level workstreams and responsible skills, active
+> constraints, current state, artifacts, closed work, optional branches, conflicts, and next entry
+> points. Verify material claims against source/config and give me a compact project map before
+> continuing.
 
 Anti-prompt: do **not** merely summarize the README, rely on previous chat, trust the handoff over
-source/config, assume every selected artifact is complete, or automatically execute all open branches.
+source/config, assume every selected artifact is complete, automatically execute all open branches,
+or copy machine-specific local state into the committed context.
 
 The first map to read after recovery is the plugin's
 [short workflow overview](plugins/data-phinter-workflows/references/overview.md). Use the
@@ -70,16 +87,41 @@ their temporary absence may be recorded as unverified history, but is not missin
 The plugin exposes four skills: context recovery, NotebookLM generation, app-owned candidate intake,
 and Shopee recovery. `write-effective-verbal-context` is intentionally retained by the project owner
 outside the plugin. A stranger may report documentation or architecture deltas, but must not assume
-access to that owner-held skill.
+access to that owner-held skill. Creating the gitignored local context is part of reading/recovery,
+not public handoff authorship.
 
-The app's **Accumulate approved unique** control is also intentionally agent-only. It stays hidden in
-normal mode and appears only with `?agent=1`. It commits the already approved `unique` verification
+The app's **Accumulate approved unique** control is also intentionally automation-only. It stays
+hidden in normal mode and appears only with `?agent=1`; that query flag controls visibility, not
+authorization. Requests whose connection and hostname are both loopback additionally supply the
+automation header. Remote
+automation is denied by default and requires both `ENABLE_REMOTE_AGENT_AUTOMATION=1` and a matching
+`AGENT_AUTOMATION_TOKEN`. The control commits the already approved `unique` verification
 artifact into the configured default CSV, deduplicates Links, creates a backup, atomically replaces
 the file, and records events. It does not accumulate arbitrary grid contents. Before commit, the
 workflow must report the preview and obtain a matching post-report decision; the backend rejects a
 commit without that recorded approval. Information parity is carried by the report, decision,
 preview counts, backup, before/after counts, and terminal result, not by showing automation controls
 to normal users.
+
+### Codex, Claude Code, and Cowork
+
+The skill bundle under `plugins/data-phinter-workflows/skills/` is host-neutral. The plugin ships
+both `.codex-plugin/plugin.json` and `.claude-plugin/plugin.json`:
+
+- Codex can use the repository skills/plugin entry points already present in the checkout.
+- Claude Code can test the bundle with
+  `claude --plugin-dir ./plugins/data-phinter-workflows`, then invoke
+  `/data-phinter-workflows:read-effective-verbal-context`.
+- Claude Desktop/Cowork can install or upload the same plugin package. When selecting the repository
+  as a Cowork folder, use the README-first entry instruction above; `CLAUDE.md` provides the same
+  compact project entry for Claude Code-compatible hosts.
+
+Skills are portable; tools and sessions are not. NotebookLM execution still requires a
+user-authorized browser-control capability that can access the intended signed-in tab. Local app
+work still requires file/shell access and reachability to the selected loopback listener. Every host
+must run the checks in
+[runtime prerequisites](plugins/data-phinter-workflows/references/runtime-prerequisites.md) and stop
+with the exact missing capability instead of silently substituting another transport.
 
 ---
 
@@ -109,6 +151,9 @@ to normal users.
   phương pháp có thể là selector ổn định hoặc công thức thích nghi tùy độ biến động của trang.
 * Luồng agent dùng trạng thái ẩn trong DOM (`#agent-import-status`) và log JSON tiền tố
   `[agent-import]`, nên automation tiếp cận cùng thông tin nghiệp vụ mà không thêm chi tiết kỹ thuật vào UI.
+* `?agent=1` chỉ hiển thị các điều khiển automation, không phải cơ chế xác thực. API agent dùng được
+  khi cả kết nối và hostname đều là loopback; truy cập từ xa mặc định bị từ chối và chỉ được bật khi
+  có cấu hình cùng token riêng.
 
 ### 🇬🇧 Input Data File Structure
 * See the file declared in `config/default-data.json` (currently `sample_data.csv`).
@@ -124,6 +169,9 @@ to normal users.
   Adding a new reporting surface to the app requires a proposal and user approval first.
 * Agent imports publish hidden DOM status (`#agent-import-status`) and JSON console logs prefixed
   with `[agent-import]`, giving automation equivalent operational information without adding technical UI.
+* `?agent=1` only reveals automation controls; it is not authentication. Agent APIs work when both
+  the connection and hostname are loopback. Remote access is denied by default and requires explicit
+  enablement plus a separate token.
 
 ---
 
@@ -138,11 +186,15 @@ to normal users.
 ---
 
 ### 🇻🇳 Cập nhật Giá Tự động
-* Sử dụng BS4 cho trang tĩnh và CloakBrowser/provider chuyên biệt cho trang động hoặc bị chặn để **tự động thu thập dữ liệu giá mới nhất**.
+* Mặc định dùng chế độ `compatible` với Selenium. Chế độ `fast` dùng BS4 cho HTML tĩnh.
+  `adaptive` dùng CloakBrowser/provider cho trường hợp phức tạp và chỉ được agent đề xuất sau khi
+  nạp context, có bằng chứng rằng chế độ mặc định chưa đủ, và nhận chấp thuận của người dùng.
 * Các tác vụ được quản lý trong một hàng đợi trực quan, cho phép người dùng **kiểm chứng dữ liệu tai nguồn, theo dõi tiến trình và xử lý các thay đổi về giá**.
 
 ### 🇬🇧 Automatic Price Updates
-* Uses BS4 for static pages and CloakBrowser/provider-specific handling for dynamic or blocked pages to **automatically collect the latest price data**.
+* Defaults to Selenium-backed `compatible` mode. `fast` uses BS4 for static HTML. `adaptive` uses
+  CloakBrowser/provider handling for harder cases and is proposed by the agent only after context
+  recovery, evidence that the default is insufficient, and user approval.
 * Tasks are managed in a visual queue, allowing users to **verify data at the source, track progress, and handle price changes**.
 
 ---
@@ -188,10 +240,14 @@ to normal users.
 # 🔒 Bảo mật và Tin cậy / Security and Reliability
 
 ### 🇻🇳 Quản lý Trình duyệt Tự động
-* Ứng dụng dùng CloakBrowser/Playwright cho luồng trình duyệt và BeautifulSoup4 cho luồng HTML tĩnh. Các trạng thái captcha, đăng nhập, chặn truy cập và lỗi selector được phân biệt thay vì gộp thành một lỗi lấy giá.
+* Selenium là backend kiểm chứng mặc định. BS4 là lựa chọn nhanh; CloakBrowser/Playwright là lựa
+  chọn thích nghi sau khi được chấp thuận. Các trạng thái captcha, đăng nhập, chặn truy cập và lỗi
+  selector được phân biệt thay vì gộp thành một lỗi lấy giá.
 
 ### 🇬🇧 Automatic Browser Management
-* The application uses CloakBrowser/Playwright for browser flows and BeautifulSoup4 for static HTML. Captcha, login, access blocking, and selector failures remain distinct operational states.
+* Selenium is the default verification backend. BS4 is the fast option; CloakBrowser/Playwright is
+  an approved adaptive escalation. Captcha, login, access blocking, and selector failures remain
+  distinct operational states.
 
 ---
 
@@ -204,12 +260,20 @@ to normal users.
 ---
 
 ### 🇻🇳 Lưu trữ API Key Phía Client
-* Khóa API của Gemini được lưu trữ an toàn trong `sessionStorage` của trình duyệt.
-* Điều này có nghĩa là khóa sẽ tự động bị xóa khi phiên làm việc kết thúc và **không bao giờ được lưu trữ trên bất kỳ máy chủ nào**, tuyệt đối bảo mật dữ liệu người dùng.
+* Khóa Gemini được lưu trong `sessionStorage` và được frontend gửi trực tiếp tới Google Gemini API.
+* Khóa không được gửi tới hoặc lưu bởi backend Data Phin-ter. Cam kết này chỉ áp dụng cho khóa
+  Gemini; URL kiểm chứng, dữ liệu tác vụ và artifact automation vẫn có thể được backend xử lý.
+* Không hệ thống nào bảo đảm an toàn tuyệt đối: chỉ chạy mã tin cậy, bảo vệ thiết bị và giới hạn
+  quyền/quota của khóa.
 
 ### 🇬🇧 Client-Side API Key Storage
-* The Gemini API key is securely stored in the browser's `sessionStorage`.
-* This means the key is automatically deleted when the session ends and is **never stored on any server**, ensuring absolute user data security.
+* The Gemini key is stored in browser `sessionStorage` and sent directly by the frontend to Google's
+  Gemini API.
+* It is not submitted to or persisted by the Data Phin-ter backend. This statement applies only to
+  the Gemini key; verification URLs, task data, and automation artifacts may still be processed by
+  the backend.
+* No system provides absolute security. Run trusted code, protect the device, and restrict key
+  permissions and quota.
 
 ---
 
@@ -217,11 +281,11 @@ to normal users.
 
 ### 🇻🇳 Yêu cầu
 * Python 3.9+
-* Trình duyệt Google Chrome
+* Trình duyệt Google Chrome (Selenium là chế độ kiểm chứng mặc định)
 
 ### 🇬🇧 Requirements
 * Python 3.9+
-* Google Chrome Browser
+* Google Chrome Browser (Selenium is the default verification mode)
 
 ---
 
@@ -254,6 +318,10 @@ to normal users.
     ```
     Nếu cổng 5000 đang bận, đặt biến `PORT` thành một cổng trống (ví dụ PowerShell:
     `$env:PORT=5002; python app.py`) và dùng chính URL đã chọn.
+    Chế độ kiểm chứng mặc định là `compatible` (Selenium). Chỉ sau khi người dùng chấp thuận đề xuất
+    adaptive, khởi động với `$env:DATA_PHINTER_VERIFICATION_MODE='adaptive'; python app.py`.
+    Selenium ưu tiên cặp Chrome/ChromeDriver tương thích trong cache chuẩn; môi trường được quản lý
+    có thể đặt rõ `CHROME_BINARY` và `CHROMEDRIVER_PATH`.
 7.  **Truy cập ứng dụng:** mở `http://127.0.0.1:5000`; chế độ automation của agent là
     `http://127.0.0.1:5000/?agent=1`. Thay `5000` bằng giá trị `PORT` nếu đã đổi cổng.
 
@@ -286,6 +354,10 @@ to normal users.
     ```
     If port 5000 is occupied, set `PORT` to a free port (for example in PowerShell:
     `$env:PORT=5002; python app.py`) and use that same URL.
+    Verification defaults to Selenium-backed `compatible`. After the user approves an adaptive
+    proposal, start with `$env:DATA_PHINTER_VERIFICATION_MODE='adaptive'; python app.py`.
+    Selenium prefers a matching Chrome/ChromeDriver pair in its standard cache. Managed environments
+    can set `CHROME_BINARY` and `CHROMEDRIVER_PATH` explicitly.
 7.  **Access the application:** open `http://127.0.0.1:5000`; agent automation mode is
     `http://127.0.0.1:5000/?agent=1`. Replace `5000` with the chosen `PORT` when overridden.
 

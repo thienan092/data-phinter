@@ -11,16 +11,16 @@ What it does
    product URL (Shopee by shopid.itemid). Duplicates are dropped, not verified.
 2. Verify each NOVEL candidate by re-deriving evidence from the LIVE page --
    it does NOT trust the AI-supplied HTML/selector. It checks whether the
-   candidate's claimed price actually appears on the rendered page, using
-   app.verify_price_bs4 (cheap) and, optionally, app.verify_price_cloak
-   (CloakBrowser, for JS-rendered / bot-walled sites).
+   candidate's claimed price actually appears on the rendered page. Selenium
+   compatibility mode is the default; BS4 is an explicit fast option, and
+   CloakBrowser is an explicit adaptive option after user approval.
 3. Accumulate the verified novel rows into an accumulate-ready CSV. It does NOT
    overwrite the default store -- promoting verified rows into sample_data.csv
    is a separate, user-approved step.
 
 match_count semantics (from app._verify_price_from_soup):
    -1  fetch failed   (dead URL / timeout / non-200 / blocked)
-    0  alive, price absent in static text (often JS-rendered -> try cloak)
+    0  page loaded, but the claimed price was absent
     1  price appears exactly once  (unique)
    >1  price appears multiple times (present but not unique -- normal for
        e-commerce: title + cart + meta, list + sale, etc.)
@@ -135,8 +135,12 @@ def main():
     ap.add_argument("--candidates", default="data_out/notebooklm_aggregated_linkprice.csv")
     ap.add_argument("--default", default="sample_data.csv")
     ap.add_argument("--out-dir", default="data_out")
-    ap.add_argument("--stage", choices=["bs4", "cloak", "all"], default="bs4")
-    ap.add_argument("--cloak-limit", type=int, default=0, help="max CloakBrowser verifications (0=no cap)")
+    ap.add_argument(
+        "--mode",
+        choices=["fast", "compatible", "adaptive"],
+        default="compatible",
+        help="verification transport; adaptive must follow explicit user approval",
+    )
     ap.add_argument("--workers", type=int, default=12)
     ap.add_argument("--accept", choices=["unique", "present"], default="present")
     ap.add_argument("--from-report", metavar="PATH",
@@ -164,7 +168,7 @@ def main():
         log(f"report  -> {rp}\nverified-> {vp}  ({n} accumulate-ready rows)")
         return
 
-    from app import verify_price_bs4, verify_price_cloak
+    from app import verify_price_bs4, verify_price_cloak, verify_price_selenium
     from providers.shopee import product_key_from_href
 
     def shopee_key(u):
@@ -186,42 +190,31 @@ def main():
     real_stdout = sys.stdout
     sys.stdout = devnull  # silence app's verify prints for the whole run
     try:
-        # ---- Stage B: cheap bs4 over all novel ----
-        def bs4_one(cid):
+        def verify_one(cid, verifier):
             row = novel_by_id[cid]
             price = parse_price(row.get(PRICE_COL))
             if price is None:
                 return cid, None
-            return cid, verify_price_bs4(row.get(LINK_COL), price)["min_count"]
+            return cid, verifier(row.get(LINK_COL), price)["min_count"]
 
-        log(f"[bs4] verifying {len(order)} novel candidates ({args.workers} workers)...")
-        with ThreadPoolExecutor(max_workers=args.workers) as ex:
-            futs = {ex.submit(bs4_one, cid): cid for cid in order}
+        verifier = {
+            "fast": verify_price_bs4,
+            "compatible": verify_price_selenium,
+            "adaptive": verify_price_cloak,
+        }[args.mode]
+        workers = args.workers if args.mode == "fast" else 1
+        log(f"[{args.mode}] verifying {len(order)} novel candidates ({workers} workers)...")
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {ex.submit(verify_one, cid, verifier): cid for cid in order}
             done = 0
-            for fut in as_completed(futs):
-                cid, mc = fut.result()
+            for future in as_completed(futures):
+                cid, mc = future.result()
                 match_counts[cid] = mc
-                match_counts["__stage__"][cid] = "bs4"
+                match_counts["__stage__"][cid] = args.mode
                 done += 1
                 if done % 25 == 0:
                     log(f"   ...{done}/{len(order)}")
-        log(f"[bs4] {dict(tally([match_counts[c] for c in order]))}")
-
-        # ---- Stage C: CloakBrowser on bs4 non-hits (dead/absent), serial ----
-        if args.stage in ("cloak", "all"):
-            retry = [c for c in order if match_counts.get(c) in (0, -1)]
-            if args.cloak_limit > 0:
-                retry = retry[:args.cloak_limit]
-            log(f"[cloak] re-verifying {len(retry)} bs4 non-hits via CloakBrowser (serial)...")
-            for n, cid in enumerate(retry, 1):
-                row = novel_by_id[cid]
-                price = parse_price(row.get(PRICE_COL))
-                res = verify_price_cloak(row.get(LINK_COL), price)
-                match_counts[cid] = res["min_count"]
-                match_counts["__stage__"][cid] = "cloak"
-                if n % 5 == 0:
-                    log(f"   ...{n}/{len(retry)}")
-            log(f"[after cloak] {dict(tally([match_counts[c] for c in order]))}")
+        log(f"[{args.mode}] {dict(tally([match_counts[c] for c in order]))}")
     finally:
         sys.stdout = real_stdout
         devnull.close()

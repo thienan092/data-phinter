@@ -27,8 +27,9 @@ NAVIGATION = f"""
 - [Runtime prerequisites and stop behavior](../../references/runtime-prerequisites.md)
 
 When an accepted workflow improvement changes entry points, responsibilities, status contracts, or
-decision gates, synchronize plugin-owned skills/references and report the required README/handoff
-delta to the project owner. Do not assume the owner-held handoff-writing skill is bundled.
+decision gates, synchronize plugin-owned skills/references and report the required README/local
+handoff delta to the project owner. The committed context changes only through explicit
+virtualization. Do not assume the owner-held handoff-writing skill is bundled.
 {NAV_END}
 """
 

@@ -1,8 +1,4 @@
-<!-- ✅ Patched version: Default mode is 'selenium' on Windows, otherwise 'bs4'.
-✅ Dynamic mode label and version inserted into help modal.
-✅ mode included in backend requests via getScrapingMode().
-✅ data-lang-key adjusted dynamically on DOM load.
--->
+<!-- Verification modes are backend-configured: compatible (default), fast, or adaptive. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -612,8 +608,10 @@ document.addEventListener('DOMContentLoaded', function () {
             help_intro1: "This version is designed to integrate the most basic analysis functions so that non-tech users can standardize and accumulate \"deep search data\" (data obtained through the <a href=\"https://gemini.google/overview/deep-research/?hl=en\" target=\"_blank\">Deep Research</a> function of the Gemini large language model) over time.",
             help_intro2_speed: "<strong>Version:</strong> Online Shelf Data (for-speed version)",
             help_intro2_stable: "<strong>Version:</strong> Online Shelf Data (stable version)",
+            help_intro2_adaptive: "<strong>Version:</strong> Online Shelf Data (adaptive browser version)",
             help_intro3_speed: "<strong>Version Number:</strong> v1.0+bs4",
             help_intro3_stable: "<strong>Version Number:</strong> v1.0+selenium",
+            help_intro3_adaptive: "<strong>Version Number:</strong> v1.0+cloakbrowser",
             help_intro4: "<strong>Topic:</strong> Coffee Market",
             help_key_components_title: "Key Components",
             help_key_components_1: "<strong>Time Filter:</strong> Allows you to select a time range for analysis. All data and charts on the page will update based on your selection.",
@@ -773,8 +771,10 @@ document.addEventListener('DOMContentLoaded', function () {
             help_intro1: "Giải pháp được thiết kế và tích hợp những chức năng phân tích cơ bản nhất mà một người sử dụng phổ thông có thể sử dụng cho việc chuẩn hóa và tích lũy dữ liệu chất lượng cao, có được thông qua chức năng <a href=\"https://gemini.google/overview/deep-research/?hl=vn\" target=\"_blank\">Deep Research</a> của mô hình ngôn ngữ lớn Gemini.",
             help_intro2_speed: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ưu tiên tốc độ)",
             help_intro2_stable: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản ổn định)",
+            help_intro2_adaptive: "<strong>Phiên bản:</strong> Dữ Liệu Kệ Hàng Trực Tuyến (bản trình duyệt thích nghi)",
             help_intro3_speed: "<strong>Version Number:</strong> v1.0+bs4",
             help_intro3_stable: "<strong>Version Number:</strong> v1.0+selenium",
+            help_intro3_adaptive: "<strong>Version Number:</strong> v1.0+cloakbrowser",
             help_intro4: "<strong>Chủ đề:</strong> Thị Trường Cà Phê",
             help_key_components_title: "Các Thành phần Chính",
             help_key_components_1: "<strong>Lọc theo Thời gian:</strong> Cho phép bạn chọn một khoảng thời gian để phân tích. Toàn bộ dữ liệu và biểu đồ trên trang sẽ được cập nhật theo lựa chọn của bạn.",
@@ -2988,6 +2988,13 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     let agentImportInProgress = false;
     let agentImportSource = null;
 
+    const getAgentAutomationHeaders = (extra = {}) => {
+        const headers = { ...extra, 'X-Agent-Automation': '1' };
+        const token = sessionStorage.getItem('agentAutomationToken');
+        if (token) headers['X-Agent-Automation-Token'] = token;
+        return headers;
+    };
+
     const setAgentImportStatus = (message, isError = false, code = 'status') => {
         agentImportStatus.textContent = message;
         agentImportStatus.dataset.status = isError ? 'error' : 'info';
@@ -3024,7 +3031,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         setAgentImportStatus(loadingMessage, false, 'loading');
         try {
             const response = await fetch(endpoint, {
-                headers: { 'X-Agent-Automation': '1' },
+                headers: getAgentAutomationHeaders(),
                 cache: 'no-store'
             });
             if (!response.ok) {
@@ -3076,7 +3083,7 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
         setAgentImportStatus(translations[currentLang].agent_accumulate_loading, false, 'accumulation_started');
         try {
             const summary = await fetch('/api/agent/verification-summary', {
-                headers: { 'X-Agent-Automation': '1' },
+                headers: getAgentAutomationHeaders(),
                 cache: 'no-store'
             }).then(response => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -3084,10 +3091,9 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
             });
             const response = await fetch('/api/agent/accumulation', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Agent-Automation': '1'
-                },
+                headers: getAgentAutomationHeaders({
+                    'Content-Type': 'application/json'
+                }),
                 body: JSON.stringify({
                     run_id: summary.run_id,
                     acceptance: 'unique',
@@ -3941,30 +3947,40 @@ Based on the entire context, philosophy, and summary data above, prioritize answ
     fetch('/api/default-mode')
         .then(res => res.json())
         .then(data => {
-        const scrapingMode = data.default_mode || "bs4";
-        modeLabel = document.getElementById("mode-label");
-        modeLabel.textContent =
-          scrapingMode === "selenium" ? "ổn định" : "ưu tiên tốc độ";
-        modeLabel.classList.add(scrapingMode === 'selenium' ? 'text-green-600' : 'text-orange-500');
+        const scrapingMode = data.default_mode || "compatible";
+        const modeLabel = document.getElementById("mode-label");
+        const modeLabels = currentLang === "vn"
+          ? { fast: "ưu tiên tốc độ", compatible: "tương thích", adaptive: "thích nghi" }
+          : { fast: "fast", compatible: "compatible", adaptive: "adaptive" };
+        modeLabel.textContent = modeLabels[scrapingMode] || scrapingMode;
+        modeLabel.classList.add(
+          scrapingMode === "compatible"
+            ? "text-green-600"
+            : scrapingMode === "adaptive"
+              ? "text-blue-600"
+              : "text-orange-500"
+        );
         document.getElementById("version-mode").textContent = scrapingMode;
+        const modeTranslationSuffix =
+          scrapingMode === "fast" ? "speed" :
+          scrapingMode === "adaptive" ? "adaptive" :
+          "stable";
+        const helpIntro2 = document.querySelector('[data-lang-key="help_intro2"]');
+        const helpIntro3 = document.querySelector('[data-lang-key="help_intro3"]');
+        if (helpIntro2) {
+            const key = `help_intro2_${modeTranslationSuffix}`;
+            helpIntro2.setAttribute("data-lang-key", key);
+            helpIntro2.innerHTML = translations[currentLang][key];
+        }
+        if (helpIntro3) {
+            const key = `help_intro3_${modeTranslationSuffix}`;
+            helpIntro3.setAttribute("data-lang-key", key);
+            helpIntro3.innerHTML = translations[currentLang][key];
+        }
         })
     .catch(err => {
         console.error("Lỗi lấy chế độ mặc định:", err);
     });
-    
-    scrapingMode = document.getElementById("version-mode").textContent
-    const helpIntro2 = document.querySelector('[data-lang-key="help_intro2"]');
-    const helpIntro3 = document.querySelector('[data-lang-key="help_intro3"]');
-    if (helpIntro2) {
-        helpIntro2.setAttribute("data-lang-key", scrapingMode === 'selenium'
-            ? "help_intro2_stable"
-            : "help_intro2_speed");
-    }
-    if (helpIntro3) {
-        helpIntro3.setAttribute("data-lang-key", scrapingMode === 'selenium'
-            ? "help_intro3_stable"
-            : "help_intro3_speed");
-    }
 });
 </script>
 </body>

@@ -1,20 +1,57 @@
 ---
 name: read-effective-verbal-context
-description: Read and operationalize effective-verbal-context.md or similar handoff documents created by write-effective-verbal-context. Use when Codex is starting or resuming a session from one or more handoffs, recovering context after compaction/session loss, continuing proof/research/debugging/implementation work from verbal context documents, auditing whether a handoff is enough to proceed, reconciling conflicting handoffs, or the user asks to "read effective verbal context", "load handoff", "resume from effective-verbal-context", or start a new session efficiently.
+description: Read, materialize, and operationalize effective-verbal-context.md or related handoff documents. Use when an agent is starting or resuming a session, recovering context after compaction/session loss, continuing proof/research/debugging/implementation work, auditing whether a handoff is enough to proceed, reconciling conflicting handoffs, or the user asks to load or resume from effective verbal context.
 ---
 
 # Read Effective Verbal Context
 
 Use this skill to turn one handoff, or a set of related handoff artifacts, into an actionable starting state for the current session. The goal is not to summarize the document back verbosely; the goal is to recover objective, constraints, artifacts, assumptions, open work, quality standards, and any unresolved conflicts well enough to continue without hidden chat history.
 
+## Project Context Pair
+
+For a project that adopts the portable/local context contract, use these roles:
+
+| Artifact | Role | Precedence |
+|---|---|---|
+| `effective-verbal-context.md` | Committed, virtualized context that must work in a fresh clone | Portable project rules and discovery baseline |
+| `effective-verbal-context.local.md` | Gitignored materialized context for the current machine, runtime, and run state | Primary working handoff for local facts |
+| `effective-verbal-context-local.md` | Legacy local filename | Migration input only when the canonical local file is absent |
+
+On the first normal invocation, materialize the canonical local file from the legacy local file when
+present, otherwise from the committed public file. In Data Phin-ter, use:
+
+`python tools/context_handoff.py materialize`
+
+The helper never overwrites an existing canonical local file and refuses to create machine-specific
+context when Git would track it. If the helper is unavailable in another project, apply the same
+rules manually.
+
+Materialization is not a blind copy operation. Preserve the portable content, then add only useful
+local facts that were actually inspected, such as workspace root, available runtime, current config
+pointers, or host capability. Never add credentials, cookies, API keys, browser profile contents,
+private page contents, or unrelated personal data.
+
+On later invocations, read the canonical local file first. Also inspect the public context when it
+may have changed after a pull/update or when durable project rules matter. Local context wins for
+machine/run facts; public context is the baseline for portable architecture and release rules;
+source/config/tests win for implementation facts. Do not silently flatten conflicts between them.
+
+An explicit request to audit, virtualize, or inspect the public context may target
+`effective-verbal-context.md` directly. That is the exception to normal local-first recovery.
+
 ## Core Workflow
 
 1. Locate the handoff.
    - If the user specifies one handoff path/name, skip discovery and use the specified file unless it is missing or unreadable.
    - If the user specifies multiple files, treat them as the candidate context artifact set for the current task. Do not discard any specified file merely because another file has a conventional name.
-   - Default path: `effective-verbal-context.md` in the current workspace root.
+   - Default path: `effective-verbal-context.local.md` in the current workspace root.
+   - If the canonical local file is absent, materialize it from `effective-verbal-context.md` or the
+     legacy `effective-verbal-context-local.md` as defined above, then continue from the canonical
+     local file.
    - If not found, search the workspace root and obvious handoff names such as `*effective*context*.md`, `*handoff*.md`, and `*.audit.md`.
-   - If multiple plausible files exist and the user did not specify which one(s) to use, prefer the one named `effective-verbal-context.md`; ask only if choosing would be risky.
+   - If multiple plausible files exist and the user did not specify which one(s) to use, prefer
+     `effective-verbal-context.local.md`, then `effective-verbal-context.md`; ask only if choosing
+     would be risky.
    - If multiple user-specified files have unclear instructions, read them as parts of a larger handoff. If material conflicts are detected and cannot be resolved by source/artifact authority, ask the user with concrete resolution options before proceeding.
 
 2. Read the handoff artifact set before acting.
@@ -56,9 +93,9 @@ Use this section when more than one handoff, audit file, prior context document,
 
 | Artifact Role | Examples | How To Use It |
 |---|---|---|
-| Primary handoff | `effective-verbal-context.md` or user-specified main handoff | Starting point for objective, constraints, and next actions. |
+| Primary handoff | `effective-verbal-context.local.md`, `effective-verbal-context.md`, or user-specified main handoff | Starting point for objective, constraints, and next actions. |
 | Older / related handoff | Previous handoff files, copied handoffs, renamed context docs | Use for history and durable facts, but check whether newer artifacts supersede them. |
-| Audit artifact | `effective-verbal-context.audit.md`, fresh-agent audit notes | Treat as a critique of sufficiency and ambiguity, not as automatic source truth. |
+| Audit artifact | `effective-verbal-context.local.audit.md`, public Stranger-audit reports, or fresh-agent audit notes | Treat as a critique of sufficiency and ambiguity, not as automatic source truth. |
 | Current user instruction | The prompt that invoked the skill or specified files | Highest authority for current intent, scope, and whether to ask before proceeding. |
 | Source/test artifact | Source code, tests, notebooks, generated data, loaders, runners | Highest authority for implementation facts when inspected. |
 | Generated theory/config | AI theory text, session JSON, generated explanations | Evidence of prior state and naming, but may be stale or contradicted by source. |
@@ -69,7 +106,7 @@ Use this section when more than one handoff, audit file, prior context document,
 |---|---|
 | User specifies one file | Use that file directly; skip discovery unless it is missing or unreadable. |
 | User specifies multiple files | Treat them as a larger handoff set; read enough of each to recover scope, role, authority, and conflicts. |
-| Multiple plausible files found by search | Prefer `effective-verbal-context.md` only when the user did not specify files and no task-specific reason points elsewhere. |
+| Multiple plausible files found by search | Prefer the canonical local file, then the public file, when the user did not specify files and no task-specific reason points elsewhere. |
 | Newer handoff vs older handoff, same scope | Prefer newer claims only when they have equal or stronger authority and are not contradicted by source. |
 | Newer handoff vs older handoff, different scope | Do not merge blindly; keep task scopes separate and use the current task to select relevance. |
 | Audit vs handoff sufficiency claim | Treat sufficiency as contested until the audit findings are patched or accepted by the user. |
@@ -186,15 +223,20 @@ For coding tasks:
 
 ## Updating The Handoff
 
-If the session discovers material new facts, corrections, bugs, changed files, or revised next steps, update `effective-verbal-context.md` using `write-effective-verbal-context` when available or by following the same table style:
+If the session discovers material new facts, corrections, bugs, changed files, or revised next
+steps, update `effective-verbal-context.local.md` using `write-effective-verbal-context` when
+available:
 
 - Add only durable continuity information.
 - Keep the handoff lean.
 - Record whether tests/commands were actually run.
 - Preserve user corrections as first-class checklist or clarification rows.
-- A project-specific owner-maintained policy overrides this fallback. If README says the handoff-writing
-  capability is retained by the owner, do not edit the handoff; report the exact documentation delta,
-  evidence, affected links, and urgency for the owner to apply.
+- Do not update the committed `effective-verbal-context.md` unless the user explicitly asks to
+  virtualize/publish the local result.
+- A project-specific owner-maintained policy overrides automatic maintenance. If README says the
+  handoff-writing capability is retained by the owner, materialization of the local working copy is
+  still allowed, but later continuity edits should be reported as an exact delta unless the owner
+  invokes or authorizes the write skill.
 
 ## Common Failure Modes To Avoid
 
@@ -214,7 +256,8 @@ If the session discovers material new facts, corrections, bugs, changed files, o
 
 When a project README directs a completely new agent to this skill:
 
-1. Treat the README and the primary handoff as the initial context artifact set.
+1. Treat the README, public context, and materialized local context as the initial context artifact
+   set. On a fresh clone, create the local file before recovery.
 2. Follow the project's short plugin/workflow overview before opening detailed architecture.
 3. Recover every top-level workstream and its responsible skill, even when only one workstream is
    immediately active. This prevents an apparently successful recovery with a structural blind spot.
@@ -222,9 +265,15 @@ When a project README directs a completely new agent to this skill:
    explore independently instead of receiving a transcript-sized explanation.
 5. Report broken semantic links, missing workstreams, stale status, or conflicts between README,
    handoff, plugin map, skills, and source as recovery findings.
-6. Do not assume the project owner's handoff-writing skill is bundled or available. If the README
-   says continuity maintenance is owner-held, treat the handoff as a readable project artifact and
-   report any required handoff/documentation delta instead of inventing a fifth plugin entry point.
+6. Do not assume the project owner's handoff-writing skill is bundled or available. Creating the
+   gitignored local working copy is part of context recovery, not handoff authorship. For later
+   continuity changes, report any required handoff/documentation delta instead of inventing a fifth
+   plugin entry point.
+7. Recover the verification-mode policy: Selenium-backed `compatible` is the default, `fast` is the
+   explicit BS4 option, and `adaptive` is the discoverable CloakBrowser/provider escalation. Do not
+   activate `adaptive` merely because context was loaded. When evidence shows the default is
+   insufficient, explain the evidence, scope, privacy/runtime impact, and proposed mode change, then
+   obtain user approval before switching.
 
 The compact recovery note should include the project map or link to it when available. Preserve links
 to the current short overview and detailed architecture when updating context. This recovery mode
@@ -239,6 +288,7 @@ prepares an independent agent to inspect the project; it is not itself the exter
 - [Runtime prerequisites and stop behavior](../../references/runtime-prerequisites.md)
 
 When an accepted workflow improvement changes entry points, responsibilities, status contracts, or
-decision gates, synchronize plugin-owned skills/references and report the required README/handoff
-delta to the project owner. Do not assume the owner-held handoff-writing skill is bundled.
+decision gates, synchronize plugin-owned skills/references and report the required README/local
+handoff delta to the project owner. The committed context changes only through explicit
+virtualization. Do not assume the owner-held handoff-writing skill is bundled.
 <!-- plugin-navigation:end -->
