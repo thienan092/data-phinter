@@ -10,6 +10,23 @@ Dự án này cung cấp các chức năng cơ bản nhất để có thể tậ
 
 Hơn nữa, mã nguồn và giao diện được tổ chức theo các điểm vào, skill và tài liệu kiến trúc có thể tra cứu, giúp agent điều chỉnh ứng dụng qua quy trình prompting để **tương thích với các loại dữ liệu thị trường** khác ngoài cà phê. Không dựa vào một giới hạn số dòng cố định; hãy dùng các liên kết ngữ nghĩa ở phần Agent Entry Point.
 
+### Điểm vào dành cho agent
+
+Agent hoàn toàn mới phải đọc README này trước, sau đó dùng skill
+[read-effective-verbal-context](.codex/skills/read-effective-verbal-context/) để phục hồi trạng thái khởi đầu từ
+[STARTER-CONTEXT.md](STARTER-CONTEXT.md). Agent có thể tự diễn đạt prompt, nhưng kết
+quả cần chỉ ra được các luồng công việc chính, skill phụ trách, ranh giới, artifact, việc đã đóng,
+nhánh tùy chọn, xung đột và điểm vào tiếp theo; không chỉ tóm tắt README hoặc dựa vào chat cũ.
+
+Sơ đồ đầu tiên cần đọc là [tổng quan workflow ngắn](plugins/data-phinter-workflows/references/overview.md);
+[kiến trúc chi tiết](plugins/data-phinter-workflows/references/architecture.md) là tầng tra cứu tiếp theo.
+Stranger audit là phép kiểm định độc lập từ bên ngoài plugin.
+
+Audit đánh giá khả năng tiếp cận trong workspace hiện tại. Publication, installation và khả năng tái
+tạo từ một committed checkout là các release gate riêng. Trong một blind audit, báo cáo của các vòng
+trước có thể được tạm giữ ngoài workspace để không làm lộ đường khám phá kỳ vọng; khi đó lịch sử audit
+có thể được ghi là chưa kiểm chứng, nhưng không được coi là context của plugin bị thiếu.
+
 ---
 
 ## 🇬🇧 English
@@ -63,23 +80,6 @@ workflow must report the preview and obtain a matching post-report decision; the
 commit without that recorded approval. Information parity is carried by the report, decision,
 preview counts, backup, before/after counts, and terminal result, not by showing automation controls
 to normal users.
-
-### Điểm vào dành cho agent
-
-Agent hoàn toàn mới phải đọc README này trước, sau đó dùng skill
-[read-effective-verbal-context](.codex/skills/read-effective-verbal-context/) để phục hồi trạng thái khởi đầu từ
-[STARTER-CONTEXT.md](STARTER-CONTEXT.md). Agent có thể tự diễn đạt prompt, nhưng kết
-quả cần chỉ ra được các luồng công việc chính, skill phụ trách, ranh giới, artifact, việc đã đóng,
-nhánh tùy chọn, xung đột và điểm vào tiếp theo; không chỉ tóm tắt README hoặc dựa vào chat cũ.
-
-Sơ đồ đầu tiên cần đọc là [tổng quan workflow ngắn](plugins/data-phinter-workflows/references/overview.md);
-[kiến trúc chi tiết](plugins/data-phinter-workflows/references/architecture.md) là tầng tra cứu tiếp theo.
-Stranger audit là phép kiểm định độc lập từ bên ngoài plugin.
-
-Audit đánh giá khả năng tiếp cận trong workspace hiện tại. Publication, installation và khả năng tái
-tạo từ một committed checkout là các release gate riêng. Trong một blind audit, báo cáo của các vòng
-trước có thể được tạm giữ ngoài workspace để không làm lộ đường khám phá kỳ vọng; khi đó lịch sử audit
-có thể được ghi là chưa kiểm chứng, nhưng không được coi là context của plugin bị thiếu.
 
 ---
 
