@@ -141,6 +141,11 @@ Do not spend the run budget building partial artifacts before this preflight pas
   provenance, but must never be interpreted as a current strict completion.
 - Nothing merged into the default file; nothing verified. The plugin's other components do that.
 
+## Semantic Acceptance Criteria & Early Decision Gate
+- **Minimum Novelty Requirement**: The final candidate dataset MUST yield >20% novel links compared to the current `default.csv`. 
+- **Self-Correction Loop**: After pulling the raw CSV and running the dedup audit vs `default.csv`, check the novelty rate. If it falls below 20%, you MUST stop. Do NOT proceed to saving the final `candidate.csv` or passing control to the intake skill.
+- **Micro-Preview**: Present a lightweight preview to the user: "I generated X candidates, but Y% are duplicates of existing links. Do you want me to auto-correct by altering the NotebookLM prompt to explicitly exclude these known URLs, or do you want to abort?". Wait for user approval.
+
 ## Related Plugin Architecture
 
 From the `data-phinter-workflows` plugin root, read `references/overview.md` for the short entry map

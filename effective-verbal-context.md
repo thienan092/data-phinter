@@ -88,6 +88,8 @@ rather than rewriting the handoff.
 
 ## Operating rules (quality bar)
 
+- **Closed for Quality**: Agents must evaluate their output against semantic expectations at the end of each major workflow phase. Do not blindly proceed to the next step if the output does not meet the specified acceptance criteria (e.g., high duplication rate).
+- **Micro-Previews (Early Decision Gates)**: If semantic criteria fail, pause the workflow. Present a lightweight summary ("Micro-Preview") to the user explaining the anomaly and asking for permission to either self-correct (e.g., adjust prompt) or abort, rather than continuing to expensive or irreversible steps.
 - Report before any approved branch: after verification, run the report/decision gate, then act only
   on the user's chosen branch (accumulate / repair / improve).
 - No silent acceptance: `unique` vs `present` price acceptance, anomaly handling, and any write to the
