@@ -3,7 +3,7 @@
 This is the project's release-safe, virtualized handoff. It is committed with the repository and
 contains only machine-independent project context. A fresh clone has no prior session state, so this
 file describes the project, its boundaries, and where local state will live, never the values of any
-one private run. Reconcile every claim against current source, config, tests, and plugin references;
+one private run. Reconcile every claim against current source, tests, and plugin references;
 do not trust prose over code.
 
 > Continuity note: this committed handoff stays machine-independent (no absolute paths, private URLs,
@@ -29,8 +29,31 @@ canonical local file does not, preserve its content by materializing the canonic
 Data Phin-ter accumulates a "single source of truth" (SST) dataset of products that each have a
 verifiable source link and price, and grows it over time. Generation proposes candidate rows; the app
 verifies each claimed price against its live source page, then deduplicates and accumulates approved
-rows. The shipped example is a Vietnamese coffee-market dataset (`sample_data.csv`), but the workflow
-is domain-agnostic: point `config/default-data.json` at your own CSV with the same schema.
+rows. Each topic lives in its own isolated workspace under `workspaces/<topic>/`.
+
+## Architecture: Workspace Isolation
+
+The project uses **workspace isolation** instead of global config files. Each topic has its own
+directory containing all data and outputs:
+
+```
+workspaces/
+  ├── <topic-a>/
+  │    ├── default.csv          # Accumulated trusted store
+  │    ├── candidate.csv        # Latest generation output
+  │    ├── verification.json    # Current verification state
+  │    └── data_out/            # Reports and verified outputs
+  └── <topic-b>/
+       └── ...
+```
+
+All tools accept `--workspace workspaces/<topic>` (or `DATA_PHINTER_WORKSPACE` env var for the app).
+If omitted, tools fall back to the `sample_data.csv` anchor at the project root for a zero-friction
+onboarding experience. There is no `config/` directory. This design ensures:
+
+- **Stateless execution**: every command explicitly declares its data context.
+- **Domain isolation**: an agent working on one topic cannot accidentally read/write another topic's data.
+- **No hidden state**: no mutable JSON config files between tool invocations.
 
 ## Workflow loop
 
@@ -79,6 +102,9 @@ rather than rewriting the handoff.
   exact missing capability.
 - Solve, classify, or reject problem rows (selector / recipe / direct URL / intervention) — do not
   hand back raw symptoms.
+- Use `--workspace` when invoking tools for a specific topic. Omitting it defaults to the `sample_data.csv` anchor.
+- Validate candidate novelty before reporting results. If all candidates are duplicates, report this
+  as a problem and propose remediation rather than silently accepting.
 - Keep tests self-contained for a fresh clone: use committed sanitized fixtures (e.g.
   `tests/fixtures/`), never gitignored captures (`diagnostics/`, browser profiles); do not skip a
   check when its fixture is absent — skipping passes the suite but drops the regression for a stranger.
@@ -87,13 +113,13 @@ rather than rewriting the handoff.
 
 - Context: `effective-verbal-context.md` (public), `effective-verbal-context.local.md` (generated
   local), and `tools/context_handoff.py` (materialize/validate helper).
-- App: `app.py` (supported entry; default port `5000`, agent mode `?agent=1`), `app_accumulation.py`,
-  `index.html`. `sel_app.py` and `live_test.py` are legacy/reference only.
-- Config: `config/default-data.json` is the portable pointer to the default CSV. Per-run pointers
-  (`config/current-candidate.json`, `config/current-verification.json`) are created by your own runs
-  and are intentionally not shipped.
+- App: `app.py` (supported entry; default port `5000`, agent mode `?agent=1`; requires `--workspace`),
+  `app_accumulation.py`, `index.html`. `sel_app.py` and `live_test.py` are legacy/reference only.
+- Workspaces: `workspaces/<topic>/` — each contains `default.csv`, optionally `candidate.csv`,
+  `verification.json`, and `data_out/`.
 - Generation support: `pipeline/` (exemplar builder, run aggregation, strict-candidate validation).
-- Verification / accumulation: `tools/`, `app_accumulation.py`.
+- Verification / accumulation: `tools/` (especially `verify_accumulate.py`, which accepts `--workspace`),
+  `app_accumulation.py`.
 - Plugin map: `plugins/data-phinter-workflows/references/overview.md`, then `architecture.md`,
   `artifact-and-status-contract.md`, and `runtime-prerequisites.md`.
 - Cross-agent entry: Codex uses the repository/plugin skill entry points. Claude Code can load the
@@ -105,9 +131,11 @@ rather than rewriting the handoff.
 
 | Term | Meaning |
 |---|---|
-| Configured default data | The cumulative trusted store; CSV path declared in `config/default-data.json`. |
+| Workspace | An isolated directory under `workspaces/<topic>/` containing `default.csv`, `candidate.csv`, and `data_out/`. All tools resolve paths relative to this directory via `--workspace`. |
+| `--workspace` flag | The mandatory CLI parameter for `app.py`, `verify_accumulate.py`, and `audit_candidates.py` that replaced the old `config/` JSON pointers. |
+| Configured default data | The cumulative trusted store; located at `workspaces/<topic>/default.csv`. |
 | Strict candidate | A topic-valid purchasable product with a full HTTP(S) direct product URL and a listed price; listing / category / search / blog URLs do not count unless verified as one product. |
-| Novel vs default | A candidate whose normalized URL is absent from the configured default URL set. |
+| Novel vs default | A candidate whose normalized URL is absent from the workspace's `default.csv` URL set. |
 | Simulated union | A URL union used only for audit; it never writes either file. |
 | Accumulation | Approval-gated app write: preview + dedup by `Link` + backup + atomic replace + event log; idempotent. |
 | Extraction recipe | A reusable price method: CSS text selector, `selector::content` attribute, or `jsonld:Product.offers.price`. |
@@ -115,10 +143,20 @@ rather than rewriting the handoff.
 
 ## Fresh-clone state and how to start
 
-A fresh clone has no prior run: no `data_out/`, no current candidate / verification pointers, no browser
-profiles. Start from `sample_data.csv`, generate your own candidates, then let the app verify and
-accumulate. Respect each source site's Terms of Service and `robots.txt`; see the README's
-responsible-use note.
+A fresh clone has no prior run: no workspace `data_out/`, no candidate CSVs, no browser profiles.
+The project root contains a `sample_data.csv` anchor. A stranger can simply run `python app.py` to
+explore the workflow instantly.
+
+To work on isolated topics, pick a workspace (e.g. `workspaces/coffee/`), generate candidates,
+then let the app verify and accumulate:
+
+```
+python app.py --workspace workspaces/coffee
+python tools/verify_accumulate.py --workspace workspaces/coffee
+```
+
+To create a new topic, create `workspaces/<new-topic>/default.csv` with the canonical SST schema.
+Respect each source site's Terms of Service and `robots.txt`; see the README's responsible-use note.
 
 ## Verifying the project
 

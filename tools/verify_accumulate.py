@@ -36,6 +36,7 @@ import csv
 import os
 import re
 import sys
+from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 
@@ -145,7 +146,18 @@ def main():
     ap.add_argument("--accept", choices=["unique", "present"], default="present")
     ap.add_argument("--from-report", metavar="PATH",
                     help="rebuild outputs from an existing report (no network); applies --accept")
+    ap.add_argument("--workspace", help="Path to workspace directory (overrides candidates/default/out-dir)")
     args = ap.parse_args()
+
+    if args.workspace:
+        ws = Path(args.workspace)
+        args.candidates = str(ws / "candidate.csv")
+        args.default = str(ws / "default.csv")
+        args.out_dir = str(ws / "data_out")
+    else:
+        args.candidates = str(ROOT / "candidate_sample.csv")
+        args.default = str(ROOT / "sample_data.csv")
+        args.out_dir = str(ROOT / "data_out")
     os.chdir(ROOT)
     accept = accept_fn(args.accept)
 

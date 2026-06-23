@@ -30,7 +30,7 @@ earlier only for authentication, quota, a true blocker, or a decision that chang
 
 ## Inputs
 - Default data file and a topic derived from it. Resolve the canonical path from
-  `config/default-data.json` unless the user explicitly supplies a different file for this run.
+  `workspaces/<topic>/default.csv` instead of a global config file.
   Ad-hoc files loaded through the app do not change this configuration.
 - An exemplar CSV: build it with `python pipeline/build_exemplar.py --default-file <file>` (facet-stratified,
   stays current with the default file). Its niche-gap manifest is AUDIT info only — do not feed it to the prompt.
@@ -120,7 +120,7 @@ Do not spend the run budget building partial artifacts before this preflight pas
 
    `python pipeline/validate_candidates.py --input <final-candidate.csv> --target 100 --out <validation.json>`
 
-   Update `config/current-candidate.json` only when this command exits successfully and reports
+   Save the candidate artifact to `workspaces/<topic>/candidate.csv` only when this command exits successfully and reports
    `strict_complete: true`.
 
 ## Quality notes / known limits
@@ -133,9 +133,9 @@ Do not spend the run budget building partial artifacts before this preflight pas
 
 ## Output contract
 - One or more raw CSVs under `data_out/` per run + a final aggregated candidate CSV containing at least
-  100 complete unique URLs + a short report (candidate rows, novelty vs default, union coverage, domains,
-  % full-URL, % HTML). If time expires below 100, mark the run incomplete rather than calling it finished.
-- Update `config/current-candidate.json` only after the strict target passes. Record `status` as
+  100 complete unique URLs.
+- In the short report to the user, you MUST explicitly explain the semantics of the files you generated (e.g. "I created timestamped raw artifacts in `data_out/` to preserve history, and updated the `candidate.csv` pointer which serves as the 'draft' for the app's intake and verification step"). Also report: candidate rows, novelty vs default, union coverage, domains, % full-URL, % HTML. If time expires below 100, mark the run incomplete rather than calling it finished.
+- Save to `workspaces/<topic>/candidate.csv` only after the strict target passes. Record `status` as
   `strict_completed`, `strict_complete: true`, the strict count, total candidate count, listing-like
   exclusions, run ID, and artifact path. A historical `accepted_with_known_risk` pointer may remain for
   provenance, but must never be interpreted as a current strict completion.

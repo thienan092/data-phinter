@@ -16,9 +16,9 @@ working path.
 
 | Pointer | Meaning |
 |---|---|
-| `config/default-data.json` | Current cumulative default CSV used by app-owned workflows |
-| `config/current-candidate.json` | Selected candidate artifact plus completion metadata |
-| `config/current-verification.json` | Latest verification decisions, repair artifacts, and terminal state |
+| `workspaces/<topic>/default.csv` | Cumulative default CSV used by app-owned workflows |
+| `workspaces/<topic>/candidate.csv` | Selected candidate artifact plus completion metadata |
+| `workspaces/<topic>/verification.json` | Latest verification decisions, repair artifacts, and terminal state |
 
 Do not infer completion from a path or filename. Read status fields and verify source artifacts.
 Plugin prompts that mention a selected/current candidate mean "audit its status first", not

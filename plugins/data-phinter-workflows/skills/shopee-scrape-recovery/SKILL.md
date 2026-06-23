@@ -56,12 +56,12 @@ Whenever an agent is used to analyze a Shopee failure, produce an Agent Hardenin
 - What measurable improvement is predicted for similar future failures?
 - What project values or current trade-offs are protected or weakened?
 
-Use [references/quality-governance.md](references/quality-governance.md) for the required review template. If a proposed fix cannot plausibly harden the CloakBrowser pipeline, state that explicitly and treat it as an exception, not the normal path.
+If a proposed fix cannot plausibly harden the CloakBrowser pipeline, state that explicitly and treat it as an exception, not the normal path.
 
 ## Workflow
 
 1. Read `artifact.json` first, then inspect `report.md` and screenshot if the classification is uncertain.
-2. Classify using [references/failure-taxonomy.md](references/failure-taxonomy.md).
+2. Classify the failure.
 3. Decide whether the next action is diagnosis-only, a small probe, or a source patch.
 4. Keep source changes inside provider/recovery boundaries: diagnostics harness, provider-specific Shopee module/strategy registry if introduced, and endpoint wiring only when the provider contract is stable.
 5. Preserve raw artifacts. Do not overwrite evidence from failed runs.
@@ -86,7 +86,7 @@ Use [references/quality-governance.md](references/quality-governance.md) for the
 
 ## Patch Policy
 
-Read [references/patch-policy.md](references/patch-policy.md) before changing backend code. In short:
+When changing backend code:
 
 - Add classifications and strategy branches before broad rewrites.
 - Return blocked/session-required states separately from "price not found".

@@ -26,9 +26,8 @@ sample_data.*.bak.csv
 # Ad-hoc imported/generated research exports
 /gem_rash/
 
-# Mutable run pointers; keep only the portable default-data pointer in Git
-/config/current-candidate.json
-/config/current-verification.json
+# Workspace runtime artifacts (completely gitignored to avoid committing local topics)
+workspaces/
 
 # Local session handoff and raw audit reports. The portable
 # effective-verbal-context.md is committed; its machine-specific materialized

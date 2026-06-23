@@ -55,12 +55,10 @@ class DefaultDataApiTests(unittest.TestCase):
     def test_remote_agent_request_accepts_enabled_matching_token(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            csv_path = root / "current.csv"
+            csv_path = root / "default.csv"
             csv_path.write_text("ID,Product\n1,Coffee\n", encoding="utf-8")
-            config_path = root / "default-data.json"
-            config_path.write_text(json.dumps({"path": str(csv_path)}), encoding="utf-8")
 
-            with patch.object(app_module, "DEFAULT_DATA_CONFIG", config_path), patch.dict(
+            with patch.object(app_module, "WORKSPACE_PATH", root), patch.dict(
                 os.environ,
                 {
                     "ENABLE_REMOTE_AGENT_AUTOMATION": "1",
@@ -83,15 +81,10 @@ class DefaultDataApiTests(unittest.TestCase):
     def test_configured_csv_is_returned(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            csv_path = root / "current.csv"
+            csv_path = root / "default.csv"
             csv_path.write_text("ID,Product\n1,Coffee\n", encoding="utf-8")
-            config_path = root / "default-data.json"
-            config_path.write_text(
-                json.dumps({"path": str(csv_path)}),
-                encoding="utf-8",
-            )
 
-            with patch.object(app_module, "DEFAULT_DATA_CONFIG", config_path):
+            with patch.object(app_module, "WORKSPACE_PATH", root):
                 response = self.client.get(
                     "/api/agent/default-data",
                     headers={"X-Agent-Automation": "1"},
@@ -100,8 +93,8 @@ class DefaultDataApiTests(unittest.TestCase):
                 response.close()
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers["X-Default-Data-Name"], "current.csv")
-        self.assertEqual(response.headers["X-Default-Data-Path"], str(csv_path))
+        self.assertEqual(response.headers["X-Default-Data-Name"], "default.csv")
+        self.assertEqual(response.headers["X-Default-Data-Path"], "default.csv")
         self.assertEqual(body.replace("\r\n", "\n"), "ID,Product\n1,Coffee\n")
 
     def test_configured_candidate_csv_is_returned(self):
@@ -109,10 +102,8 @@ class DefaultDataApiTests(unittest.TestCase):
             root = Path(temp_dir)
             csv_path = root / "candidate.csv"
             csv_path.write_text("ID,Product\nNB1,Coffee\n", encoding="utf-8")
-            config_path = root / "current-candidate.json"
-            config_path.write_text(json.dumps({"path": str(csv_path)}), encoding="utf-8")
 
-            with patch.object(app_module, "CANDIDATE_DATA_CONFIG", config_path):
+            with patch.object(app_module, "WORKSPACE_PATH", root):
                 response = self.client.get(
                     "/api/agent/candidate-data",
                     headers={"X-Agent-Automation": "1"},
@@ -122,6 +113,7 @@ class DefaultDataApiTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["X-Candidate-Data-Name"], "candidate.csv")
+        self.assertEqual(response.headers["X-Candidate-Data-Path"], "candidate.csv")
         self.assertEqual(body.replace("\r\n", "\n"), "ID,Product\nNB1,Coffee\n")
 
     def test_verification_summary_is_returned(self):
@@ -135,7 +127,7 @@ class DefaultDataApiTests(unittest.TestCase):
                 "NB3,Coffee C,https://example.com/c,300,cloak,0,False,False\n",
                 encoding="utf-8",
             )
-            config_path = root / "current-verification.json"
+            config_path = root / "verification.json"
             config_path.write_text(
                 json.dumps({
                     "run_id": "run-1",
@@ -149,7 +141,7 @@ class DefaultDataApiTests(unittest.TestCase):
                 encoding="utf-8",
             )
 
-            with patch.object(app_module, "VERIFICATION_CONFIG", config_path):
+            with patch.object(app_module, "WORKSPACE_PATH", root):
                 response = self.client.get(
                     "/api/agent/verification-summary",
                     headers={"X-Agent-Automation": "1"},
@@ -180,9 +172,7 @@ class DefaultDataApiTests(unittest.TestCase):
                 "N1,New,https://example.com/b\n",
                 encoding="utf-8",
             )
-            default_config = root / "default-data.json"
-            default_config.write_text(json.dumps({"path": str(default_path)}), encoding="utf-8")
-            verification_config = root / "current-verification.json"
+            verification_config = root / "verification.json"
             verification_config.write_text(json.dumps({
                 "run_id": "run-1",
                 "unique_match_path": str(accepted_path),
@@ -192,8 +182,7 @@ class DefaultDataApiTests(unittest.TestCase):
             }), encoding="utf-8")
 
             with patch.object(app_module, "PROJECT_ROOT", root), \
-                    patch.object(app_module, "DEFAULT_DATA_CONFIG", default_config), \
-                    patch.object(app_module, "VERIFICATION_CONFIG", verification_config):
+                    patch.object(app_module, "WORKSPACE_PATH", root):
                 preview = self.client.post(
                     "/api/agent/accumulation",
                     headers={"X-Agent-Automation": "1"},
@@ -234,9 +223,7 @@ class DefaultDataApiTests(unittest.TestCase):
                 "ID,Product,Link\nN1,New,https://example.com/b\n",
                 encoding="utf-8",
             )
-            default_config = root / "default-data.json"
-            default_config.write_text(json.dumps({"path": str(default_path)}), encoding="utf-8")
-            verification_config = root / "current-verification.json"
+            verification_config = root / "verification.json"
             verification_config.write_text(json.dumps({
                 "run_id": "run-1",
                 "unique_match_path": str(accepted_path),
@@ -245,8 +232,7 @@ class DefaultDataApiTests(unittest.TestCase):
             }), encoding="utf-8")
 
             with patch.object(app_module, "PROJECT_ROOT", root), \
-                    patch.object(app_module, "DEFAULT_DATA_CONFIG", default_config), \
-                    patch.object(app_module, "VERIFICATION_CONFIG", verification_config):
+                    patch.object(app_module, "WORKSPACE_PATH", root):
                 preview = self.client.post(
                     "/api/agent/accumulation",
                     headers={"X-Agent-Automation": "1"},

@@ -42,9 +42,9 @@ starting reference (purely optional):
 - The representative exemplar can be regenerated from the current default file with
   `pipeline/build_exemplar.py` (facet-stratified). Its niche-gap output is *audit information*,
   not prompt input.
-- The canonical path of the current default file is declared in `config/default-data.json`.
-  App and agent workflows should resolve that configuration instead of assuming
-  `sample_data.csv`; ad-hoc files imported by a user do not alter the configured default.
-- A completed generation run may update `config/current-candidate.json` to point the app's
-  agent-assisted import control at the final candidate artifact. This pointer does not merge,
+- The canonical path of the current default file is `workspaces/<topic>/default.csv`.
+  App and agent workflows resolve the workspace path via `--workspace` instead of assuming
+  a global config; ad-hoc files imported by a user do not alter the configured default.
+- A completed generation run saves its output to `workspaces/<topic>/candidate.csv` to point the app's
+  agent-assisted import control at the final candidate artifact. This does not merge,
   verify, or accumulate the candidate data.

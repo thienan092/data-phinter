@@ -29,7 +29,7 @@ verification, and accumulation.
 
 ## Workflow
 
-1. Resolve `config/default-data.json` and `config/current-candidate.json`.
+1. Resolve the target `workspace` path (e.g. `workspaces/banh-mi/`) which contains `default.csv` and `candidate.csv`. DO NOT USE a global `config/` directory.
 2. Resolve the active skill directory, then run its bundled audit script. Claude plugin hosts expose
    `${CLAUDE_SKILL_DIR}`; repository development may use the canonical fallback:
 

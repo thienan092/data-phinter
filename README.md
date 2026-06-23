@@ -136,10 +136,11 @@ with the exact missing capability instead of silently substituting another trans
 # 🚀 Tính năng chính / Key Features
 
 ### 🇻🇳 Cấu trúc file dữ liệu (.csv) đầu vào
-* Xem file được khai báo tại `config/default-data.json` (hiện là `sample_data.csv`).
+* File `sample_data.csv` ở thư mục gốc đóng vai trò là dữ liệu mẫu mặc định để có thể bắt đầu chạy ứng dụng nhanh nhất mà không cần thiết lập.
+* Với các dự án thực tế, mỗi chủ đề có workspace riêng tại `workspaces/<topic>/` chứa `default.csv` (dữ liệu tích lũy) và `candidate.csv` (ứng viên mới nhất). Ví dụ: `workspaces/coffee/default.csv`.
 * Người dùng vẫn có thể dùng **Thêm dữ liệu** để nhập một CSV tức thời; thao tác đó không đổi file mặc định.
 * Chế độ hỗ trợ agent (`?agent=1`) hiện một điều khiển riêng để nạp file mặc định đã cấu hình.
-* Tập ứng viên đang được chọn được khai báo tại `config/current-candidate.json`; hãy đọc cả trường
+* Tập ứng viên nằm tại `workspaces/<topic>/candidate.csv`; hãy đọc cả trường
   `status`/`strict_complete` trước khi coi nó là một run hoàn tất. Chế độ agent có điều khiển riêng để nạp nó sau dữ liệu mặc định.
 * Trước khi xác minh, agent chạy skill `app-sst-candidate-intake` để audit bất thường. Cảnh báo
   mức `review` hoặc `blocker` phải được báo cho người dùng quyết định thay vì tự động bỏ qua.
@@ -156,10 +157,11 @@ with the exact missing capability instead of silently substituting another trans
   có cấu hình cùng token riêng.
 
 ### 🇬🇧 Input Data File Structure
-* See the file declared in `config/default-data.json` (currently `sample_data.csv`).
+* The `sample_data.csv` file at the project root serves as the default anchor to quickly start the application with zero friction.
+* For real projects, each topic has its own workspace at `workspaces/<topic>/` containing `default.csv` (accumulated store) and `candidate.csv` (latest generation output). Example: `workspaces/coffee/default.csv`.
 * Users can still use **Add Data** for an ad-hoc CSV; doing so does not change the configured default.
 * Agent-assisted mode (`?agent=1`) exposes a separate control for loading the configured default file.
-* The selected candidate artifact is declared in `config/current-candidate.json`; read its
+* The candidate artifact lives at `workspaces/<topic>/candidate.csv`; read its
   `status`/`strict_complete` metadata before treating it as a completed run. Agent mode exposes a separate control for loading it after the default data.
 * Before verification, the agent runs `app-sst-candidate-intake` to audit anomalies. `review` or
   `blocker` findings require a user decision instead of silent continuation.
@@ -316,10 +318,11 @@ with the exact missing capability instead of silently substituting another trans
     ```bash
     python app.py
     ```
+    Mặc định ứng dụng sẽ chạy với dữ liệu mẫu `sample_data.csv`. Để chạy với một workspace cụ thể, thêm `--workspace`, ví dụ: `--workspace workspaces/coffee` hoặc `--workspace workspaces/banh-mi`.
     Nếu cổng 5000 đang bận, đặt biến `PORT` thành một cổng trống (ví dụ PowerShell:
-    `$env:PORT=5002; python app.py`) và dùng chính URL đã chọn.
+    `$env:PORT=5002; python app.py --workspace workspaces/coffee`) và dùng chính URL đã chọn.
     Chế độ kiểm chứng mặc định là `compatible` (Selenium). Chỉ sau khi người dùng chấp thuận đề xuất
-    adaptive, khởi động với `$env:DATA_PHINTER_VERIFICATION_MODE='adaptive'; python app.py`.
+    adaptive, khởi động với `$env:DATA_PHINTER_VERIFICATION_MODE='adaptive'; python app.py --workspace workspaces/coffee`.
     Selenium ưu tiên cặp Chrome/ChromeDriver tương thích trong cache chuẩn; môi trường được quản lý
     có thể đặt rõ `CHROME_BINARY` và `CHROMEDRIVER_PATH`.
 7.  **Truy cập ứng dụng:** mở `http://127.0.0.1:5000`; chế độ automation của agent là
@@ -352,10 +355,11 @@ with the exact missing capability instead of silently substituting another trans
     ```bash
     python app.py
     ```
+    By default, the app uses the `sample_data.csv` anchor. To use a specific workspace, add `--workspace`, for example: `--workspace workspaces/coffee`.
     If port 5000 is occupied, set `PORT` to a free port (for example in PowerShell:
-    `$env:PORT=5002; python app.py`) and use that same URL.
+    `$env:PORT=5002; python app.py --workspace workspaces/coffee`) and use that same URL.
     Verification defaults to Selenium-backed `compatible`. After the user approves an adaptive
-    proposal, start with `$env:DATA_PHINTER_VERIFICATION_MODE='adaptive'; python app.py`.
+    proposal, start with `$env:DATA_PHINTER_VERIFICATION_MODE='adaptive'; python app.py --workspace workspaces/coffee`.
     Selenium prefers a matching Chrome/ChromeDriver pair in its standard cache. Managed environments
     can set `CHROME_BINARY` and `CHROMEDRIVER_PATH` explicitly.
 7.  **Access the application:** open `http://127.0.0.1:5000`; agent automation mode is

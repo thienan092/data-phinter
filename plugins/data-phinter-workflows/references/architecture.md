@@ -26,13 +26,13 @@ hidden context.
 
 ```mermaid
 flowchart TD
-    CFG[config/default-data.json] --> EX[Representative exemplar]
+    WS["workspaces/&lt;topic&gt;/default.csv"] --> EX[Representative exemplar]
     EX --> N[NotebookLM generation]
     N --> CAN[Timestamped candidate artifacts]
-    CAN --> PTR[config/current-candidate.json]
+    CAN --> CAND["workspaces/&lt;topic&gt;/candidate.csv"]
 
-    CFG --> APP[App candidate intake]
-    PTR --> APP
+    WS --> APP[App candidate intake]
+    CAND --> APP
     APP --> AUD[Audit and Link dedup]
     AUD --> VER[Live verification]
     VER --> REP[Report, analyze, advise/improve]
@@ -50,7 +50,7 @@ flowchart TD
     TERM --> EV
     PUB[Committed virtualized context] --> LOCAL[Gitignored local context]
     LOCAL --> REC[Context recovery]
-    REC --> CFG
+    REC --> WS
     EV -. local continuity delta .-> LOCAL
     LOCAL -. explicit owner virtualization .-> PUB
 ```
@@ -102,7 +102,7 @@ and recorded post-report approval.
 ## Automation Boundary
 
 The recurring automation invokes `notebooklm-sst-research` and preserves the stable automation ID
-`daily-notebooklm-sst-data-run`. It may update `config/current-candidate.json` only after strict
+`daily-notebooklm-sst-data-run`. It may write `workspaces/<topic>/candidate.csv` only after strict
 completion and may never write configured default data. App intake remains a separate user-directed
 workflow.
 
@@ -134,7 +134,7 @@ accepted change must be classified against this matrix:
 |---|---|
 | Entry point or skill relationship | Repo README, `references/overview.md`, detailed architecture, local handoff; public context when explicitly virtualized |
 | Skill responsibility or workflow order | Affected `SKILL.md`, detailed architecture, local handoff |
-| Candidate/default/verification status contract | Skill, `artifact-and-status-contract.md`, config examples, local handoff |
+| Candidate/default/verification status contract | Skill, `artifact-and-status-contract.md`, local handoff |
 | User decision gate or mutation rule | Intake skill, detailed architecture, tests, local handoff |
 | New recovery/failure class | Recovery skill/references, detailed architecture when cross-component, local handoff |
 | Plugin packaging/version | Both host manifests, plugin README, local handoff; public context when explicitly virtualized |

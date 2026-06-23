@@ -32,10 +32,18 @@ for stream in (sys.stdout, sys.stderr):
 app = Flask(__name__)
 CORS(app)
 
+import argparse
+
 PROJECT_ROOT = Path(__file__).resolve().parent
-DEFAULT_DATA_CONFIG = PROJECT_ROOT / "config" / "default-data.json"
-CANDIDATE_DATA_CONFIG = PROJECT_ROOT / "config" / "current-candidate.json"
-VERIFICATION_CONFIG = PROJECT_ROOT / "config" / "current-verification.json"
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--workspace", help="Path to workspace directory")
+args, _ = parser.parse_known_args()
+workspace_str = args.workspace or os.environ.get("DATA_PHINTER_WORKSPACE")
+if not workspace_str and "pytest" not in sys.modules:
+    print("WARNING: No workspace specified. Use --workspace or DATA_PHINTER_WORKSPACE env var.", file=sys.stderr)
+
+WORKSPACE_PATH = Path(workspace_str).resolve() if workspace_str else None
 MODE_ALIASES = {
     "fast": "fast",
     "bs4": "fast",
@@ -265,33 +273,37 @@ def _verify_price_from_soup(soup, price: int):
 
 # ========== API ==========
 
-def get_configured_csv_path(config_path):
-    with config_path.open(encoding="utf-8") as config_file:
-        config = json.load(config_file)
-
-    configured_path = config.get("path")
-    if not isinstance(configured_path, str) or not configured_path.strip():
-        raise ValueError(f"{config_path.name} must contain a non-empty 'path'")
-
-    data_path = Path(configured_path).expanduser()
-    if not data_path.is_absolute():
-        data_path = PROJECT_ROOT / data_path
-    data_path = data_path.resolve()
-
-    if data_path.suffix.lower() != ".csv":
-        raise ValueError("The configured default data file must be a CSV")
-    if not data_path.is_file():
-        raise FileNotFoundError(f"Configured default data file does not exist: {data_path}")
-
-    return data_path, configured_path
-
-
 def get_default_data_path():
-    return get_configured_csv_path(DEFAULT_DATA_CONFIG)
+    if WORKSPACE_PATH:
+        data_path = WORKSPACE_PATH / "default.csv"
+    else:
+        data_path = PROJECT_ROOT / "sample_data.csv"
+    
+    if not data_path.is_file():
+        raise FileNotFoundError(f"Default data file does not exist: {data_path}")
+    return data_path, data_path.name
+
+
+def get_candidate_data_path():
+    if WORKSPACE_PATH:
+        data_path = WORKSPACE_PATH / "candidate.csv"
+    else:
+        data_path = PROJECT_ROOT / "candidate_sample.csv"
+    
+    if not data_path.is_file():
+        raise FileNotFoundError(f"Candidate data file does not exist: {data_path}")
+    return data_path, data_path.name
 
 
 def get_verification_config():
-    with VERIFICATION_CONFIG.open(encoding="utf-8") as handle:
+    if WORKSPACE_PATH:
+        ver_path = WORKSPACE_PATH / "verification.json"
+    else:
+        ver_path = PROJECT_ROOT / "verification_sample.json"
+        
+    if not ver_path.is_file():
+        return {}
+    with ver_path.open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
@@ -573,7 +585,7 @@ def get_agent_candidate_data():
         return denied
 
     try:
-        data_path, configured_path = get_configured_csv_path(CANDIDATE_DATA_CONFIG)
+        data_path, configured_path = get_candidate_data_path()
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         return jsonify({"error": str(exc)}), 500
 
@@ -596,7 +608,9 @@ def get_agent_verification_summary():
         return denied
 
     try:
-        config = json.loads(VERIFICATION_CONFIG.read_text(encoding="utf-8"))
+        config = get_verification_config()
+        if not config:
+            return jsonify({"error": "No verification config found"}), 404
         report_path = Path(config["report_path"])
         if not report_path.is_absolute():
             report_path = PROJECT_ROOT / report_path
@@ -672,7 +686,8 @@ def post_agent_accumulation():
                 "accumulation_result": result,
                 "user_decision_required": False,
             })
-            VERIFICATION_CONFIG.write_text(
+            ver_path = WORKSPACE_PATH / "verification.json" if WORKSPACE_PATH else PROJECT_ROOT / "verification_sample.json"
+            ver_path.write_text(
                 json.dumps(config, ensure_ascii=False, indent=2) + "\n",
                 encoding="utf-8",
             )

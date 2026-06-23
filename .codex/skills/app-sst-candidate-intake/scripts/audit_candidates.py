@@ -11,18 +11,12 @@ sys.path.insert(0, str(ROOT / "pipeline"))
 from candidate_quality import analyze_rows, host, normalized_url  # noqa: E402
 
 
-def load_configured_csv(root, config_name):
-    config_path = root / "config" / config_name
-    config = json.loads(config_path.read_text(encoding="utf-8"))
-    path = Path(config["path"]).expanduser()
-    if not path.is_absolute():
-        path = root / path
-    path = path.resolve()
+def load_csv(path):
     with path.open(encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         rows = list(reader)
         fields = reader.fieldnames or []
-    return config, path, fields, rows
+    return path, fields, rows
 
 
 def add_finding(findings, code, severity, message, evidence):
@@ -33,18 +27,24 @@ def add_finding(findings, code, severity, message, evidence):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--root", default=".")
+    parser.add_argument("--workspace", help="Path to workspace directory")
     parser.add_argument("--target", type=int, default=100)
     parser.add_argument("--out")
     args = parser.parse_args()
 
-    root = Path(args.root).resolve()
-    default_config, default_path, default_fields, default_rows = load_configured_csv(
-        root, "default-data.json"
-    )
-    candidate_config, candidate_path, candidate_fields, candidate_rows = load_configured_csv(
-        root, "current-candidate.json"
-    )
+    if args.workspace:
+        ws = Path(args.workspace).resolve()
+        default_path_arg = ws / "default.csv"
+        candidate_path_arg = ws / "candidate.csv"
+    else:
+        default_path_arg = ROOT / "sample_data.csv"
+        candidate_path_arg = ROOT / "candidate_sample.csv"
+
+    default_path, default_fields, default_rows = load_csv(default_path_arg)
+    
+    if not candidate_path_arg.exists():
+        raise SystemExit(f"Candidate file not found: {candidate_path_arg}")
+    candidate_path, candidate_fields, candidate_rows = load_csv(candidate_path_arg)
 
     if len(default_fields) < 12 or len(candidate_fields) < 12:
         raise SystemExit("Configured CSV does not match the canonical SST schema")
@@ -132,15 +132,17 @@ def main():
             "Candidate artifact contains listing-like URLs excluded by the strict contract.",
             {"rows": strict["excluded"]["listing_like_url"]},
         )
-    if candidate_config.get("strict_complete") is not True:
+    # Strict completion check no longer relies on a JSON config file
+    # Instead, we just check if the strict target is met.
+    if strict["strict_candidate_rows"] < args.target:
         add_finding(
             findings,
             "candidate_pointer_not_strict_complete",
             "blocker",
-            "The selected candidate pointer is not marked strict-complete.",
+            "The candidate artifact has not met the strict target of unique valid URLs.",
             {
-                "status": candidate_config.get("status"),
-                "strict_complete": candidate_config.get("strict_complete"),
+                "status": "incomplete",
+                "strict_complete": False,
             },
         )
 
@@ -152,16 +154,14 @@ def main():
         "status": decision,
         "user_decision_required": decision != "proceed",
         "default": {
-            "config": str(default_config.get("path")),
             "path": str(default_path),
             "rows": len(default_rows),
             "unique_urls": len(default_set),
         },
         "candidate": {
-            "config": str(candidate_config.get("path")),
-            "run_id": candidate_config.get("run_id"),
             "path": str(candidate_path),
             "rows": len(candidate_rows),
+            "strict_candidate_rows": strict["strict_candidate_rows"],
             "unique_urls": len(candidate_set),
             "target": args.target,
             "strict_candidate_rows": strict["strict_candidate_rows"],
