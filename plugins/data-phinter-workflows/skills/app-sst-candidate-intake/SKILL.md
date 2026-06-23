@@ -41,7 +41,9 @@ verification, and accumulation.
    one host-specific skill path exists on every agent.
 
 3. Read the JSON result before operating the app.
-4. Apply the decision gate:
+4. Apply the Micro-Preview / Early Decision Gate:
+   - Analyze the JSON result from `audit_candidates.py`. 
+   - **Semantic Check**: If the duplicate rate is extremely high (e.g. >80% overlap), or exclusions are severe, STOP. Present a lightweight Micro-Preview: "Audit shows X% duplicates. Proceeding to heavy verification may waste time. Do you want to abort intake and return to the generation phase to self-correct?".
    - `blocker`: stop and explain what must be fixed.
    - `review`: report the anomaly, its likely impact, and the available choices; wait for the
      user's decision before verification or accumulation.
