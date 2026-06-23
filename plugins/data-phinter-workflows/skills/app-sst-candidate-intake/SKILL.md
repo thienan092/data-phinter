@@ -43,7 +43,8 @@ verification, and accumulation.
 3. Read the JSON result before operating the app.
 4. Apply the Micro-Preview / Early Decision Gate:
    - Analyze the JSON result from `audit_candidates.py`. 
-   - **Semantic Check**: If the duplicate rate is extremely high (e.g. >80% overlap), or exclusions are severe, STOP. Present a lightweight Micro-Preview: "Audit shows X% duplicates. Proceeding to heavy verification may waste time. Do you want to abort intake and return to the generation phase to self-correct?".
+   - **Data quality check**: If the duplicate rate is extremely high (e.g. >80% overlap), or exclusions are severe, STOP. Present a lightweight Micro-Preview: "Audit shows X% duplicates. Proceeding to heavy verification may waste time. Do you want to abort intake and return to the generation phase to self-correct?".
+   - **User accessibility check**: Before proceeding to verification (step 9), verify that the user has been offered the most interactive channel available. If `app.py` has not been started yet, this is an accessibility gap — present a Micro-Preview: "I can start the app UI (`app.py --workspace ...`) so you can observe verification interactively, or run the batch tool directly. Which do you prefer?"
    - `blocker`: stop and explain what must be fixed.
    - `review`: report the anomaly, its likely impact, and the available choices; wait for the
      user's decision before verification or accumulation.
@@ -79,8 +80,10 @@ verification, and accumulation.
     - `unique`: accept only price match count 1.
     - `present`: also accept match count >1, but report these as ambiguous price-present rows.
     - Never silently choose between these standards.
-12. Run **Report, analyze, and advise/improve**. Include the acceptance choices and the concrete
-    page-repair branch. Wait for the user's decision.
+12. Run **Report, analyze, and advise/improve**. Include the acceptance choices, the concrete
+     page-repair branch, and an **observability audit**: did the agent offer the user the most
+     interactive channel at each phase? List any points where a batch tool was used instead of the
+     app UI, and explain why. Wait for the user's decision.
 13. If approved, visit every selected problematic product page to recover the
     correct price and reusable extraction method. Classify each page before proposing a fix:
     - stable product DOM: save a narrow CSS selector;
