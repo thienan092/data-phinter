@@ -105,7 +105,7 @@ def main():
             findings,
             "candidate_non_topic_rows",
             "blocker",
-            "Candidate artifact contains known non-coffee product types.",
+            "Candidate artifact contains known non-topic product types.",
             {"rows": strict["excluded"]["non_topic_product_type"]},
         )
     if top_share >= 0.40:

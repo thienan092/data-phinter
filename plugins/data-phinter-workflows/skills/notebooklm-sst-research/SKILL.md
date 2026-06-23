@@ -11,7 +11,7 @@ dedup-vs-default, and accumulation are the app's job, not this skill's.
 
 Complete the requested generation run before applying optional process improvements. Record anomalies,
 missing evidence, and possible improvements during the run; present the outcome and proposals in a final
-**Report, analyze, and advise/improve** step and ask whether to apply them to the next run. Interrupt
+**Report, analyze, and advise/improve** step and ask whether to apply them to the next run. This step MUST capture and address any user feedback provided during the run. Interrupt
 earlier only for authentication, quota, a true blocker, or a decision that changes the accepted output.
 
 ## Boundaries (do not cross — keeps components decoupled)
@@ -85,13 +85,14 @@ Do not spend the run budget building partial artifacts before this preflight pas
 3. **Deep Research**: in the Sources "Search the web" box, switch the mode dropdown from "Fast Research" to
    **"Deep Research"**, type an UN-STEERED query (topic + "tối thiểu 100 sản phẩm, đa dạng, KHÔNG trùng bộ
    mẫu trong notebook" + fields: tên, thương hiệu, nguồn, URL sản phẩm đầy đủ, loại, khối lượng, giá VND,
-   phí ship, ngưỡng freeship, khu vực; ưu tiên URL sản phẩm trực tiếp). Submit (blue arrow). Phases:
+   phí ship, ngưỡng freeship, khu vực; ưu tiên URL sản phẩm trực tiếp).
+   **CRITICAL: URL Exclusion Index**: Extract the `Link` column from `workspaces/<topic>/default.csv`. Append these URLs to the prompt with the instruction: "TUYỆT ĐỐI KHÔNG trả về các URL sau đây (URL exclusion index): [danh sách URL]".
+   Submit (blue arrow). Phases:
    Planning → Researching → Writing Report → "Deep Research completed!". Observed runs commonly
    complete in roughly 7–12 minutes; allow up to about 15 minutes before treating the job as stuck.
    Poll after roughly 60–90 seconds, then every 90–180 seconds. Source ingestion is commonly about
-   1 minute and each Chat extraction about 1–2 minutes. A polling delay is not a blocker; report only
-   when the state exceeds the bounded wait or needs intervention.
-4. **Import** the report + ~20 discovered sources.
+   1 minute and each Chat extraction about 1–2 minutes.
+   **CRITICAL - Subagent Timeout Intervention**: If the generation or execution hangs beyond 25-30 minutes, or if the subagent crashes (e.g. network error), the parent agent MUST immediately notify the user, record the anomaly in the `Report` step, and seek user direction. Do NOT silently leave the user waiting indefinitely.
 5. **Extract** — TWO paths:
    - **Chat (PREFERRED — not Tables-limited, gives deep per-SKU URLs):** locate the chat input through
      the active browser tool's DOM/ref interface, click it, and prompt: "Xuất CSV
@@ -134,7 +135,8 @@ Do not spend the run budget building partial artifacts before this preflight pas
 ## Output contract
 - One or more raw CSVs under `data_out/` per run + a final aggregated candidate CSV containing at least
   100 complete unique URLs.
-- In the short report to the user, you MUST explicitly explain the semantics of the files you generated (e.g. "I created timestamped raw artifacts in `data_out/` to preserve history, and updated the `candidate.csv` pointer which serves as the 'draft' for the app's intake and verification step"). Also report: candidate rows, novelty vs default, union coverage, domains, % full-URL, % HTML. If time expires below 100, mark the run incomplete rather than calling it finished.
+- **CRITICAL - Mandatory Looping**: If the strict target (100) is not met, the agent MUST automatically execute subsequent generation loops (feeding the newly discovered valid URLs into the exclusion index) until the target is reached, unless the 30-minute budget expires.
+- In the short report to the user, you MUST explicitly explain the semantics of the files you generated (e.g. "I created timestamped raw artifacts in `data_out/` to preserve history, and updated the `candidate.csv` pointer which serves as the 'draft' for the app's intake and verification step"). Also report: candidate rows, novelty vs default, union coverage, domains, % full-URL, % HTML. If time expires below 100, mark the run incomplete rather than calling it finished. The **Report** step MUST explicitly audit process quality (e.g., timeouts, looping compliance, and user feedback).
 - Save to `workspaces/<topic>/candidate.csv` only after the strict target passes. Record `status` as
   `strict_completed`, `strict_complete: true`, the strict count, total candidate count, listing-like
   exclusions, run ID, and artifact path. A historical `accepted_with_known_risk` pointer may remain for

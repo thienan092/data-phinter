@@ -88,8 +88,13 @@ rather than rewriting the handoff.
 
 ## Operating rules (quality bar)
 
-- **Closed for Quality**: Agents must evaluate their output against semantic expectations at the end of each major workflow phase. Do not blindly proceed to the next step if the output does not meet the specified acceptance criteria (e.g., high duplication rate).
+- **Closed for Quality**: Agents must evaluate their output against semantic expectations at the end of each major workflow phase. Do not blindly proceed to the next step if the output does not meet the specified acceptance criteria (e.g., high duplication rate). The **Report, analyze, and advise/improve** step must audit both data quality AND process quality (timeouts, looping compliance, and any user feedback raised during the run).
 - **Micro-Previews (Early Decision Gates)**: If semantic criteria fail, pause the workflow. Present a lightweight summary ("Micro-Preview") to the user explaining the anomaly and asking for permission to either self-correct (e.g., adjust prompt) or abort, rather than continuing to expensive or irreversible steps.
+- **Background task consultation**: Before sending heavy or long-running tasks (e.g., scraping dozens of sites, batch verification) to the background, explain the tradeoff (speed vs observability) and let the user choose. Do not silently run tasks that remove the user's ability to observe progress.
+- **Mandatory looping**: If a generation run yields fewer than the strict target (100 candidates) and the time budget (30 minutes) has not expired, the agent must automatically iterate with an updated exclusion index rather than stopping short.
+- **Timeout intervention**: If a browser subagent or long-running task hangs beyond 25–30 minutes, the parent agent must immediately notify the user (via `tools/notify_user.py` or equivalent audio alert) and seek direction. Do not silently leave the user waiting.
+- **Candidate ID requirement**: Every CSV row entering `tools/verify_accumulate.py` must have a non-empty `ID` column value. The tool uses `ID` as a dictionary key; empty IDs cause silent row overwrites.
+- **Friction ownership**: The system (agent + context files) owns the burden of remembering user feedback, corrections, and quality concerns. The user must never be forced to re-raise an issue that was already discussed. If the user has to remind the agent, the system has failed.
 - Report before any approved branch: after verification, run the report/decision gate, then act only
   on the user's chosen branch (accumulate / repair / improve).
 - No silent acceptance: `unique` vs `present` price acceptance, anomaly handling, and any write to the
@@ -122,6 +127,8 @@ rather than rewriting the handoff.
 - Generation support: `pipeline/` (exemplar builder, run aggregation, strict-candidate validation).
 - Verification / accumulation: `tools/` (especially `verify_accumulate.py`, which accepts `--workspace`),
   `app_accumulation.py`.
+- User notification: `tools/notify_user.py` — plays a system beep for agent-to-user alerts at
+  decision gates. Usage: `python tools/notify_user.py [frequency_hz] [duration_ms]`.
 - Plugin map: `plugins/data-phinter-workflows/references/overview.md`, then `architecture.md`,
   `artifact-and-status-contract.md`, and `runtime-prerequisites.md`.
 - Cross-agent entry: Codex uses the repository/plugin skill entry points. Claude Code can load the
