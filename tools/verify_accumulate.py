@@ -1,5 +1,13 @@
 """App-owned verify + accumulate for NotebookLM SST candidates.
 
+⚠️ AGENT ACCESSIBILITY GATE: This is a batch verification tool. An interactive
+alternative exists: ``app.py --workspace <topic>`` provides a web UI where the
+user can observe verification progress in real time. Before invoking this script,
+the agent MUST offer the user the interactive channel via a Micro-Preview:
+"I can start the app UI so you can observe verification interactively, or run
+the batch tool for speed. Which do you prefer?"
+See: effective-verbal-context.md → Micro-Previews → User accessibility.
+
 Component boundary (see pipeline/NOTES.md): the *app* owns dedup-vs-default,
 verification, and accumulation. The NotebookLM pipeline only produces the raw
 candidate CSV. This script therefore lives under tools/ (app side), reuses the

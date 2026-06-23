@@ -243,6 +243,25 @@ def validate_policy_regressions(errors: list[str]) -> None:
         errors.append("plugin default prompt assumes the selected candidate is eligible")
 
 
+def validate_accessibility_gates(errors: list[str]) -> None:
+    """Verify that batch tools with interactive alternatives carry an
+    AGENT ACCESSIBILITY GATE marker in their module docstring."""
+    batch_tools_with_interactive_alt = {
+        "tools/verify_accumulate.py": "app.py --workspace",
+    }
+    for tool_rel, alternative in batch_tools_with_interactive_alt.items():
+        tool_path = REPO_ROOT / tool_rel
+        if not tool_path.is_file():
+            errors.append(f"batch tool is missing: {tool_rel}")
+            continue
+        content = tool_path.read_text(encoding="utf-8")
+        if "AGENT ACCESSIBILITY GATE" not in content:
+            errors.append(
+                f"batch tool {tool_rel} is missing AGENT ACCESSIBILITY GATE marker "
+                f"(interactive alternative: {alternative})"
+            )
+
+
 def main() -> None:
     errors: list[str] = []
     validate_manifest(errors)
@@ -250,6 +269,7 @@ def main() -> None:
     validate_links(errors)
     validate_access_contract(errors)
     validate_policy_regressions(errors)
+    validate_accessibility_gates(errors)
     forbidden = [
         path.relative_to(PLUGIN_ROOT)
         for path in PLUGIN_ROOT.rglob("*")
